@@ -568,7 +568,7 @@ textarea.fi{resize:vertical;}
 
   <!-- TOP BAR: nom programme + client + publier -->
   <div style="height:52px;border-bottom:1px solid var(--brd);display:flex;align-items:center;padding:0 20px;gap:14px;flex-shrink:0;background:var(--bg-sidebar);">
-    <button class="btn" onclick="nav('sport')" style="padding:5px 12px;font-size:12px;flex-shrink:0;">&#8592; Retour</button>
+    <button class="btn" onclick="edGoBack()" style="padding:5px 12px;font-size:12px;flex-shrink:0;">&#8592; Retour</button>
     <input class="ed-prog-name" id="ed-prog-name" type="text" placeholder="Nom du programme" onchange="edSaveName()">
     <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
       <select class="fs" id="ed-prog-client" onchange="edSaveClient()" style="font-size:12px;padding:6px 10px;max-width:200px;">
@@ -1178,6 +1178,13 @@ function nav(p){
   document.getElementById('sidebar').style.display='';
   document.getElementById('main').style.width='';
   document.getElementById('main').style.maxWidth='';
+  // Reset editor state
+  ED.progId = null;
+  ED.seanceIdx = 0;
+  const edBody = document.getElementById('ed-seance-content');
+  if(edBody) edBody.innerHTML='';
+  const edTabs = document.getElementById('ed-stabs-row');
+  if(edTabs) edTabs.innerHTML='';
   document.getElementById('tb-actions').innerHTML='<button class="btn btn-p" onclick="restoreNav()">+ Ajouter un client</button>';
   document.querySelectorAll('.page').forEach(x=>{x.classList.remove('active');x.style.display='';});
   document.querySelectorAll('.ni').forEach(x=>x.classList.remove('active'));
@@ -1967,6 +1974,14 @@ function openProgramEditor(pid) {
   edRenderExLib();
   edRenderTabs();
   edRenderSeance();
+}
+
+function edGoBack() {
+  // Reset editor completely before navigating back
+  ED.progId = null;
+  ED.seanceIdx = 0;
+  nav('sport');
+  renderProgs();
 }
 
 function edSaveName() {
