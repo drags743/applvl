@@ -42,8 +42,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg-base);color:var(--txt)
 .btn-p:hover{background:var(--red-br);border-color:var(--red-br);}
 .page{flex:1;overflow-y:auto;padding:28px;display:none;}
 .page.active{display:block;}
-#page-prog-editor{padding:0!important;overflow:hidden!important;height:100vh!important;}
-#page-prog-editor.active{display:flex!important;flex-direction:column!important;height:100vh!important;}
+#page-prog-editor{padding:0!important;overflow:hidden!important;height:100vh!important;display:none!important;visibility:hidden!important;}
+#page-prog-editor.active{display:flex!important;flex-direction:column!important;height:100vh!important;visibility:visible!important;}
 /* ---- STATS ---- */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
 .sc{background:var(--bg-card);border:1px solid var(--brd);border-radius:var(--r);padding:18px 20px;position:relative;overflow:hidden;}
@@ -337,6 +337,20 @@ textarea.fi{resize:vertical;}
 .ex-step{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
 .ex-step-num{width:22px;height:22px;border-radius:50%;background:var(--red-dk);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
 .ex-step-txt{font-size:13px;color:var(--txt2);line-height:1.6;}
+/* ---- NUTRITION ---- */
+.nut-tab{padding:10px 18px;font-size:13px;cursor:pointer;color:var(--txt3);border-bottom:2px solid transparent;transition:.15s;font-weight:500;}
+.nut-tab:hover{color:var(--txt);}
+.nut-tab.active{color:var(--txt);border-bottom-color:var(--red-br);}
+.nut-prog-card{background:var(--bg-card);border:1px solid var(--brd);border-radius:var(--r);padding:20px;cursor:pointer;transition:.15s;}
+.nut-prog-card:hover{border-color:var(--brd-r);background:var(--red-gl);}
+.nut-aliment-card{background:var(--bg-card);border:1px solid var(--brd);border-radius:var(--rs);padding:12px 14px;display:flex;align-items:center;gap:10px;}
+.nut-repas-block{background:var(--bg-card);border:1px solid var(--brd);border-radius:var(--r);margin-bottom:12px;overflow:hidden;}
+.nut-repas-header{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--brd);gap:10px;cursor:pointer;}
+.nut-ing-row{display:flex;align-items:center;padding:9px 16px;border-bottom:1px solid rgba(255,255,255,0.04);gap:8px;}
+.nut-ing-row:last-child{border-bottom:none;}
+.nut-ed-item{display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:var(--rs);cursor:pointer;border:1px solid transparent;margin-bottom:3px;transition:.1s;}
+.nut-ed-item:hover{background:var(--red-gl);border-color:var(--brd-r);}
+.nut-add-btn{width:24px;height:24px;border-radius:50%;background:var(--red);border:none;color:#fff;font-size:14px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
 /* ---- TOAST ---- */
 /* ---- TOAST ---- */
 /* ---- TOAST ---- */
@@ -517,15 +531,109 @@ textarea.fi{resize:vertical;}
 
   <!-- NUTRITION -->
   <div class="page" id="page-nutrition">
-    <div class="ph">
-      <div><div class="pt">Nutrition</div><div class="ps">Plans nutritionnels de vos clients</div></div>
-      <button class="btn btn-p" onclick="openModal('mo-nut')">+ Créer un plan</button>
+  <!-- HEADER -->
+  <div class="ph">
+    <div>
+      <div class="pt">Nutrition</div>
+      <div class="ps">Plans et programmes nutritionnels</div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;" id="nut-grid"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" onclick="nutShowBibliotheque()" style="font-size:12px;">📚 Bibliothèque</button>
+      <button class="btn btn-p" onclick="openModal('mo-nutplan')">+ Nouveau programme</button>
+    </div>
   </div>
 
-  <!-- SUIVI -->
-  <div class="page" id="page-suivi">
+  <!-- TABS -->
+  <div style="display:flex;gap:0;border-bottom:1px solid var(--brd);margin-bottom:20px;">
+    <div class="nut-tab active" onclick="switchNutTab('programmes',this)">Programmes</div>
+    <div class="nut-tab" onclick="switchNutTab('plans',this)">Plans de repas</div>
+    <div class="nut-tab" onclick="switchNutTab('aliments',this)">Bibliothèque aliments</div>
+  </div>
+
+  <!-- TAB: PROGRAMMES -->
+  <div id="nut-tab-programmes">
+    <div id="nut-programmes-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;"></div>
+  </div>
+
+  <!-- TAB: ALIMENTS -->
+  <div id="nut-tab-aliments" style="display:none;">
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <input class="fi" id="nut-search-aliment" oninput="renderAlimentsLib()" placeholder="Rechercher un aliment..." style="flex:1;">
+      <select class="fi" id="nut-filter-cat" onchange="renderAlimentsLib()" style="width:auto;">
+        <option value="">Tous</option>
+        <option value="Protéines">Protéines</option>
+        <option value="Féculents">Féculents</option>
+        <option value="Légumes">Légumes</option>
+        <option value="Fruits">Fruits</option>
+        <option value="Matières grasses">Matières grasses</option>
+        <option value="Laitiers">Laitiers</option>
+        <option value="Autres">Autres</option>
+      </select>
+    </div>
+    <div id="nut-aliments-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;"></div>
+  </div>
+
+  <!-- TAB: PLANS -->
+  <div id="nut-tab-plans" style="display:none;">
+    <div id="nut-plans-list"></div>
+  </div>
+
+  <!-- PROGRAMME EDITOR (overlay) -->
+  <div id="nut-editor" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto;padding:0;">
+    <!-- Editor topbar -->
+    <div style="display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--brd);background:var(--bg-card);position:sticky;top:0;z-index:10;">
+      <button class="btn" onclick="closeNutEditor()" style="font-size:12px;padding:5px 12px;">← Retour</button>
+      <div style="font-size:16px;font-weight:600;flex:1;" id="nut-editor-title">Programme alimentaire</div>
+      <div style="display:flex;gap:8px;">
+        <span style="font-size:11px;padding:3px 10px;border-radius:10px;background:rgba(255,193,7,0.15);color:#f39c12;">Brouillon</span>
+        <button class="btn btn-p" onclick="saveNutProgramme()" style="font-size:12px;">✓ Publier</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:320px 1fr;height:calc(100vh - 57px);">
+      <!-- LEFT: Bibliothèque aliments -->
+      <div style="border-right:1px solid var(--brd);display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <div style="padding:14px;border-bottom:1px solid var(--brd);">
+          <div style="font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Aliments</div>
+          <input class="fi" id="nut-ed-search" oninput="renderNutEdLib()" placeholder="Rechercher un aliment..." style="margin-bottom:8px;">
+          <div style="display:flex;gap:4px;flex-wrap:wrap;" id="nut-ed-filters">
+            <button class="stat-type-btn active" onclick="setNutFilter('',this)" style="padding:3px 10px;border-radius:12px;border:1px solid var(--brd-r);background:var(--red-gl);color:var(--red-br);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Tous</button>
+            <button class="stat-type-btn" onclick="setNutFilter('Protéines',this)" style="padding:3px 10px;border-radius:12px;border:1px solid var(--brd);background:transparent;color:var(--txt3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Protéines</button>
+            <button class="stat-type-btn" onclick="setNutFilter('Féculents',this)" style="padding:3px 10px;border-radius:12px;border:1px solid var(--brd);background:transparent;color:var(--txt3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Féculents</button>
+            <button class="stat-type-btn" onclick="setNutFilter('Légumes',this)" style="padding:3px 10px;border-radius:12px;border:1px solid var(--brd);background:transparent;color:var(--txt3);font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Légumes</button>
+          </div>
+        </div>
+        <div id="nut-ed-lib" style="flex:1;overflow-y:auto;padding:8px;"></div>
+      </div>
+
+      <!-- RIGHT: Plan de repas -->
+      <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+        <!-- Day tabs -->
+        <div style="display:flex;align-items:center;gap:8px;padding:12px 20px;border-bottom:1px solid var(--brd);">
+          <div id="nut-day-tabs" style="display:flex;gap:6px;flex:1;overflow-x:auto;"></div>
+          <button onclick="addNutDay()" style="width:30px;height:30px;border-radius:50%;border:1px dashed var(--brd);background:transparent;color:var(--txt3);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;">+</button>
+        </div>
+
+        <!-- Macros bar -->
+        <div id="nut-macros-bar" style="display:flex;align-items:center;gap:20px;padding:10px 20px;background:var(--bg-input);border-bottom:1px solid var(--brd);font-size:12px;">
+          <span id="nut-bar-kcal" style="font-weight:600;">0 kcal</span>
+          <span style="color:var(--txt3);">P: <span id="nut-bar-prot" style="color:#e74c3c;font-weight:500;">0g</span></span>
+          <span style="color:var(--txt3);">G: <span id="nut-bar-gluc" style="color:#f39c12;font-weight:500;">0g</span></span>
+          <span style="color:var(--txt3);">L: <span id="nut-bar-lip" style="color:#3498db;font-weight:500;">0g</span></span>
+        </div>
+
+        <!-- Repas list -->
+        <div id="nut-repas-list" style="flex:1;overflow-y:auto;padding:16px 20px;"></div>
+
+        <!-- Add meal button -->
+        <div style="padding:14px 20px;border-top:1px solid var(--brd);">
+          <button class="btn" onclick="addNutRepas()" style="width:100%;font-size:12px;">+ Ajouter un repas</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<div class="page" id="page-suivi">
     <div class="ph">
       <div><div class="pt">Suivi</div><div class="ps">Bilans, habitudes et questionnaires</div></div>
       <button class="btn btn-p" onclick="openModal('mo-bilan')">+ Créer un bilan</button>
@@ -1985,25 +2093,23 @@ function openProgramEditor(pid) {
 function edGoBack() {
   ED.progId = null;
   ED.seanceIdx = 0;
-  // Hide editor
+  // FORCE hide editor completely
   const edPg = document.getElementById('page-prog-editor');
-  if (edPg) edPg.style.cssText = 'display:none!important;position:static;';
-  // Restore UI
+  if (edPg) {
+    edPg.style.setProperty('display', 'none', 'important');
+    edPg.style.setProperty('position', 'static', 'important');
+    edPg.style.setProperty('visibility', 'hidden', 'important');
+    edPg.classList.remove('active');
+  }
+  // Restore sidebar and topbar
   const sb = document.getElementById('sidebar');
   const tb = document.querySelector('.topbar');
   const main = document.getElementById('main');
-  if (sb) sb.style.display = '';
-  if (tb) tb.style.display = '';
-  if (main) { main.style.width = ''; main.style.maxWidth = ''; }
-  // Show sport page
-  document.querySelectorAll('.page').forEach(x => { x.classList.remove('active'); x.style.display = ''; });
-  document.querySelectorAll('.ni').forEach(x => x.classList.remove('active'));
-  const sportPage = document.getElementById('page-sport');
-  if (sportPage) { sportPage.classList.add('active'); sportPage.style.display = 'block'; }
-  document.querySelectorAll('.ni')[3]?.classList.add('active');
-  document.getElementById('tb-title').textContent = 'Sport — Programmes';
-  document.getElementById('tb-actions').innerHTML = '<button class="btn btn-p" onclick="restoreNav()">+ Ajouter un client</button>';
-  renderProgs();
+  if (sb) sb.style.cssText = '';
+  if (tb) tb.style.cssText = '';
+  if (main) { main.style.width = ''; main.style.maxWidth = ''; main.style.cssText = 'flex:1;overflow:hidden;display:flex;flex-direction:column;'; }
+  // Navigate to sport
+  nav('sport');
 }
 
 function edSaveName() {
@@ -2266,6 +2372,170 @@ function edDelSet(si,ei,seti){
 
 
 function restoreNav(){openModal('mo-client');}
+
+
+// ===== NUTRITION DATA (from Ekklo) =====
+
+const ALIMENTS_DB = [
+  {id:'a1', nom:'Flocon d\u2019avoine', kcal:355, prot:13, gluc:60, lip:7, emoji:'🌾'},
+  {id:'a2', nom:'Whey protéine', kcal:404, prot:80, gluc:7, lip:7, emoji:'🥤'},
+  {id:'a3', nom:'Lait d\u2019amande', kcal:13, prot:0, gluc:1, lip:1, emoji:'🥛'},
+  {id:'a4', nom:'Banane', kcal:63, prot:1, gluc:15, lip:0, emoji:'🍌'},
+  {id:'a5', nom:'Beurre de cacahu\u00e8te', kcal:640, prot:26, gluc:11, lip:51, emoji:'🥜'},
+  {id:'a6', nom:'Riz Basmati Blanc', kcal:355, prot:7, gluc:79, lip:1, emoji:'🍚'},
+  {id:'a7', nom:'Blanc de poulet', kcal:105, prot:23, gluc:0, lip:1, emoji:'🍗'},
+  {id:'a8', nom:'Brocolis vapeur', kcal:29, prot:3, gluc:4, lip:0, emoji:'🥦'},
+  {id:'a9', nom:'Huile d\u2019olive', kcal:884, prot:0, gluc:0, lip:100, emoji:'🫒'},
+  {id:'a10', nom:'Pain complet', kcal:247, prot:9, gluc:44, lip:3, emoji:'🍞'},
+  {id:'a11', nom:'Confiture de fraise', kcal:195, prot:0, gluc:48, lip:0, emoji:'🍓'},
+  {id:'a12', nom:'Pâtes complètes', kcal:352, prot:13, gluc:66, lip:3, emoji:'🍝'},
+  {id:'a13', nom:'Steak haché 5%', kcal:130, prot:20, gluc:0, lip:5, emoji:'🥩'},
+  {id:'a14', nom:'Haricots verts', kcal:24, prot:2, gluc:4, lip:0, emoji:'🫘'},
+  {id:'a15', nom:'Fromage blanc 0%', kcal:46, prot:8, gluc:4, lip:0, emoji:'🥛'},
+  {id:'a16', nom:'Amandes', kcal:617, prot:21, gluc:7, lip:54, emoji:'🌰'},
+  {id:'a17', nom:'Fruits rouges', kcal:46, prot:1, gluc:10, lip:0, emoji:'🍓'},
+  {id:'a18', nom:'Oeufs', kcal:143, prot:13, gluc:1, lip:10, emoji:'🥚'},
+  {id:'a19', nom:'Flocons d\u2019avoine', kcal:362, prot:13, gluc:60, lip:7, emoji:'🌾'},
+  {id:'a20', nom:'Pomme', kcal:52, prot:0, gluc:12, lip:0, emoji:'🍎'},
+  {id:'a21', nom:'Riz complet', kcal:348, prot:7, gluc:73, lip:2, emoji:'🍚'},
+  {id:'a22', nom:'Saumon', kcal:212, prot:20, gluc:0, lip:14, emoji:'🐟'},
+  {id:'a23', nom:'Haricots verts vapeur', kcal:26, prot:2, gluc:5, lip:0, emoji:'🫘'},
+  {id:'a24', nom:'Fromage Blanc 0%', kcal:46, prot:8, gluc:4, lip:0, emoji:'🥛'},
+  {id:'a25', nom:'Noix', kcal:691, prot:15, gluc:7, lip:65, emoji:'🌰'},
+  {id:'a26', nom:'Miel', kcal:320, prot:0, gluc:80, lip:0, emoji:'🍯'},
+  {id:'a27', nom:'Patate douce', kcal:86, prot:2, gluc:20, lip:0, emoji:'🍠'},
+  {id:'a28', nom:'Escalope de dinde', kcal:128, prot:26, gluc:0, lip:2, emoji:'🍗'},
+  {id:'a29', nom:'Epinards', kcal:23, prot:3, gluc:1, lip:0, emoji:'🥬'},
+  {id:'a30', nom:'Carbonnades flamandes', kcal:168, prot:6, gluc:9, lip:12, emoji:'🧑‍🍳'},
+  {id:'a31', nom:'Cr\u00e8me br\u00fcl\u00e9e', kcal:222, prot:4, gluc:22, lip:13, emoji:'🍮'},
+  {id:'a32', nom:'Tripes au muscadet', kcal:110, prot:20, gluc:0, lip:3, emoji:'🍲'},
+  {id:'a33', nom:'Filets de poulet (maïs)', kcal:113, prot:23, gluc:0, lip:2, emoji:'🍗'},
+  {id:'a34', nom:'Chocolat 85% cacao', kcal:580, prot:11, gluc:22, lip:47, emoji:'🍫'},
+  {id:'a35', nom:'Seitan gourmet grill', kcal:144, prot:19, gluc:6, lip:5, emoji:'🌱'},
+  {id:'a36', nom:'Rillettes de thon', kcal:147, prot:16, gluc:10, lip:5, emoji:'🐟'},
+  {id:'a37', nom:'Andouillette pan\u00e9e', kcal:195, prot:17, gluc:5, lip:12, emoji:'🥩'},
+  {id:'a38', nom:'Quatre-quarts', kcal:436, prot:6, gluc:48, lip:24, emoji:'🍰'},
+  {id:'a39', nom:'Marrons entiers pel\u00e9s', kcal:174, prot:3, gluc:34, lip:2, emoji:'🌰'},
+  {id:'a40', nom:'Tome de Savoie', kcal:362, prot:24, gluc:1, lip:29, emoji:'🧀'},
+  {id:'a41', nom:'Filet de poulet', kcal:114, prot:24, gluc:0, lip:2, emoji:'🍗'},
+  {id:'a42', nom:'Houmous Bio Olives', kcal:228, prot:7, gluc:15, lip:16, emoji:'🫒'},
+  {id:'a43', nom:'Lardons fumés', kcal:269, prot:14, gluc:0, lip:23, emoji:'🥓'},
+  {id:'a44', nom:'Jambon \u00e0 l\u2019ancienne', kcal:122, prot:23, gluc:1, lip:3, emoji:'🍖'},
+  {id:'a45', nom:'Crackers farine compl\u00e8te', kcal:404, prot:13, gluc:72, lip:6, emoji:'🍘'},
+  {id:'a46', nom:'Beurre demi-sel bio', kcal:713, prot:1, gluc:2, lip:80, emoji:'🧈'},
+  {id:'a47', nom:'Quenelle artisanale', kcal:203, prot:10, gluc:15, lip:12, emoji:'🍳'},
+  {id:'a48', nom:'Les Petites Faims de Poulet', kcal:107, prot:23, gluc:0, lip:1, emoji:'🍗'},
+  {id:'a49', nom:'Poulet cuit fumé', kcal:166, prot:19, gluc:1, lip:10, emoji:'🍗'},
+  {id:'a50', nom:'Munster', kcal:343, prot:19, gluc:2, lip:29, emoji:'🧀'},
+];
+
+const PROGRAMMES_NUT = [
+  {
+    id: 'pn1',
+    nom: 'Exemple Programme Alimentaire',
+    client_id: 1,
+    jours: [
+      {
+        nom: 'Jour On',
+        kcal_total: 2093, prot_total: 154.8, gluc_total: 239.6, lip_total: 49.9,
+        repas: [
+          {
+            nom: 'Petit-déjeuner', pct: 24,
+            aliments: [
+              {nom:'Flocon d\u2019avoine', qte:60, kcal:222, prot:8, gluc:36, lip:4},
+              {nom:'Whey protéine', qte:30, kcal:121, prot:24, gluc:2, lip:2},
+              {nom:'Lait d\u2019amande', qte:200, kcal:26, prot:0, gluc:2, lip:2},
+              {nom:'Banane', qte:100, kcal:63, prot:1, gluc:15, lip:0},
+              {nom:'Beurre de cacahu\u00e8te', qte:10, kcal:64, prot:3, gluc:1, lip:5},
+            ]
+          },
+          {
+            nom: 'Déjeuner', pct: 31,
+            aliments: [
+              {nom:'Riz Basmati Blanc', qte:100, kcal:355, prot:7, gluc:79, lip:1},
+              {nom:'Blanc de poulet', qte:150, kcal:157, prot:34, gluc:0, lip:2},
+              {nom:'Brocolis vapeur', qte:150, kcal:43, prot:4, gluc:6, lip:0},
+              {nom:'Huile d\u2019olive', qte:10, kcal:82, prot:0, gluc:0, lip:9},
+            ]
+          },
+          {
+            nom: 'Collation', pct: 12,
+            aliments: [
+              {nom:'Pain complet', qte:60, kcal:148, prot:5, gluc:26, lip:2},
+              {nom:'Confiture de fraise', qte:15, kcal:29, prot:0, gluc:7, lip:0},
+              {nom:'Whey protéine', qte:20, kcal:81, prot:16, gluc:1, lip:1},
+            ]
+          },
+          {
+            nom: 'Dîner', pct: 25,
+            aliments: [
+              {nom:'P\u00e2tes compl\u00e8tes', qte:80, kcal:281, prot:10, gluc:53, lip:2},
+              {nom:'Steak haché 5%', qte:125, kcal:163, prot:25, gluc:0, lip:6},
+              {nom:'Haricots verts', qte:150, kcal:36, prot:3, gluc:6, lip:0},
+              {nom:'Huile d\u2019olive', qte:5, kcal:44, prot:0, gluc:0, lip:5},
+            ]
+          },
+          {
+            nom: 'Collation soir', pct: 8,
+            aliments: [
+              {nom:'Fromage blanc 0%', qte:150, kcal:69, prot:12, gluc:6, lip:0},
+              {nom:'Amandes', qte:10, kcal:62, prot:2, gluc:1, lip:5},
+              {nom:'Fruits rouges', qte:50, kcal:46, prot:0, gluc:5, lip:0},
+            ]
+          }
+        ]
+      },
+      {
+        nom: 'Jour Off',
+        kcal_total: 1750, prot_total: 138, gluc_total: 188, lip_total: 42,
+        repas: [
+          {
+            nom: 'Petit-déjeuner', pct: 23,
+            aliments: [
+              {nom:'Oeufs', qte:120, kcal:108, prot:14, gluc:0, lip:8},
+              {nom:'Flocons d\u2019avoine', qte:40, kcal:145, prot:5, gluc:24, lip:3},
+              {nom:'Pomme', qte:150, kcal:78, prot:0, gluc:18, lip:0},
+              {nom:'Amandes', qte:10, kcal:62, prot:2, gluc:1, lip:5},
+            ]
+          },
+          {
+            nom: 'Déjeuner', pct: 40,
+            aliments: [
+              {nom:'Riz complet', qte:80, kcal:278, prot:6, gluc:58, lip:2},
+              {nom:'Saumon', qte:130, kcal:276, prot:26, gluc:0, lip:18},
+              {nom:'Haricots verts vapeur', qte:150, kcal:39, prot:3, gluc:7, lip:0},
+              {nom:'Huile d\u2019olive', qte:9, kcal:80, prot:0, gluc:0, lip:9},
+            ]
+          },
+          {
+            nom: 'Collation', pct: 10,
+            aliments: [
+              {nom:'Fromage Blanc 0%', qte:200, kcal:92, prot:16, gluc:8, lip:0},
+              {nom:'Noix', qte:10, kcal:69, prot:2, gluc:1, lip:7},
+              {nom:'Miel', qte:5, kcal:16, prot:0, gluc:4, lip:0},
+            ]
+          },
+          {
+            nom: 'Dîner', pct: 21,
+            aliments: [
+              {nom:'Patate douce', qte:150, kcal:81, prot:2, gluc:19, lip:0},
+              {nom:'Escalope de dinde', qte:150, kcal:192, prot:39, gluc:0, lip:3},
+              {nom:'Epinards', qte:150, kcal:44, prot:4, gluc:3, lip:0},
+              {nom:'Huile d\u2019olive', qte:5, kcal:41, prot:0, gluc:0, lip:5},
+            ]
+          },
+          {
+            nom: 'Collation soir', pct: 6,
+            aliments: [
+              {nom:'Fromage blanc 0%', qte:150, kcal:69, prot:12, gluc:6, lip:0},
+              {nom:'Fruits rouges', qte:50, kcal:46, prot:0, gluc:5, lip:0},
+            ]
+          }
+        ]
+      }
+    ]
+  }
+];
 
 // ===== EXERCISE LIBRARY (free-exercise-db) =====
 const EXDB_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
@@ -2824,6 +3094,265 @@ function deleteStatEntry(date) {
   drawCliStats(_statClientId, '4S');
   toast('✓ Entrée supprimée');
 }
+
+// ===== NUTRITION FUNCTIONS =====
+let NUT = { progId: null, dayIdx: 0, filter: '', search: '' };
+
+function switchNutTab(tab, el) {
+  document.querySelectorAll('.nut-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('nut-tab-programmes').style.display = tab==='programmes'?'block':'none';
+  document.getElementById('nut-tab-aliments').style.display = tab==='aliments'?'block':'none';
+  document.getElementById('nut-tab-plans').style.display = tab==='plans'?'block':'none';
+  if(tab==='aliments') renderAlimentsLib();
+  if(tab==='programmes') renderNutProgrammes();
+}
+
+function renderNutProgrammes() {
+  const el = document.getElementById('nut-programmes-list');
+  if(!el) return;
+  const plans = S.nutPlans || [];
+  if(plans.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--txt3);"><div style="font-size:40px;margin-bottom:12px;">🥗</div><div>Aucun programme nutritionnel.<br>Créez votre premier programme !</div></div>';
+    return;
+  }
+  el.innerHTML = plans.map(p => {
+    const c = S.clients.find(x => x.id === p.client_id);
+    const jours = (PROGRAMMES_NUT.find(pn => pn.id === ('pn'+p.id)) || {jours:[]}).jours;
+    const kcal = jours[0]?.kcal_total || p.kcal || 0;
+    return `<div class="nut-prog-card" onclick="openNutEditor(${p.id})">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:15px;font-weight:600;">${p.nom}</div>
+        <span style="font-size:10px;padding:3px 10px;border-radius:10px;background:rgba(255,193,7,0.12);color:#f39c12;font-weight:600;">Brouillon</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;">
+        ${c?`<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg-input);color:var(--txt2);">${c.prenom} ${c.nom}</span>`:''}
+        <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg-input);color:var(--txt2);">${jours.length || 2} jours</span>
+        <span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--bg-input);color:var(--txt2);">${kcal} kcal/j</span>
+      </div>
+      <div style="display:flex;gap:16px;font-size:12px;color:var(--txt3);">
+        <span>🍗 ${p.prot || 0}g prot</span>
+        <span>🍚 ${p.gluc || 0}g gluc</span>
+        <span>🫒 ${p.lip || 0}g lip</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAlimentsLib() {
+  const el = document.getElementById('nut-aliments-grid');
+  if(!el) return;
+  const search = document.getElementById('nut-search-aliment')?.value?.toLowerCase() || '';
+  let items = ALIMENTS_DB;
+  if(search) items = items.filter(a => a.nom.toLowerCase().includes(search));
+  el.innerHTML = items.map(a => `
+    <div class="nut-aliment-card">
+      <div style="font-size:24px;width:40px;text-align:center;">${a.emoji}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.nom}</div>
+        <div style="font-size:11px;color:var(--txt3);">100g — ${a.kcal} kcal</div>
+      </div>
+      <div style="text-align:right;font-size:10px;color:var(--txt3);">
+        <div style="color:#e74c3c;">P: ${a.prot}g</div>
+        <div style="color:#f39c12;">G: ${a.gluc}g</div>
+        <div style="color:#3498db;">L: ${a.lip}g</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function setNutFilter(filter, btn) {
+  NUT.filter = filter;
+  document.querySelectorAll('#nut-ed-filters .stat-type-btn').forEach(b => {
+    b.style.background='transparent'; b.style.color='var(--txt3)'; b.style.borderColor='var(--brd)';
+  });
+  btn.style.background='var(--red)'; btn.style.color='#fff'; btn.style.borderColor='var(--red)';
+  renderNutEdLib();
+}
+
+function renderNutEdLib() {
+  const el = document.getElementById('nut-ed-lib');
+  if(!el) return;
+  const search = (document.getElementById('nut-ed-search')?.value || '').toLowerCase();
+  let items = ALIMENTS_DB;
+  if(search) items = items.filter(a => a.nom.toLowerCase().includes(search));
+  el.innerHTML = items.map(a => `
+    <div class="nut-ed-item" onclick="addAlimentToRepas('${a.id}')">
+      <div style="font-size:20px;width:32px;text-align:center;flex-shrink:0;">${a.emoji}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.nom}</div>
+        <div style="font-size:10px;color:var(--txt3);">100g · ${a.kcal}kcal · P:${a.prot}g G:${a.gluc}g L:${a.lip}g</div>
+      </div>
+      <button class="nut-add-btn" onclick="event.stopPropagation();addAlimentToRepas('${a.id}')">+</button>
+    </div>
+  `).join('');
+}
+
+function openNutEditor(planId) {
+  NUT.progId = planId;
+  NUT.dayIdx = 0;
+  const plan = S.nutPlans.find(p => p.id === planId);
+  if(!plan) return;
+  document.getElementById('nut-editor-title').textContent = plan.nom;
+  document.getElementById('nut-editor').style.cssText = 'display:block;position:fixed;inset:0;background:var(--bg);z-index:200;overflow-y:auto;padding:0;';
+  renderNutDayTabs();
+  renderNutEdLib();
+  renderNutRepas();
+}
+
+function closeNutEditor() {
+  document.getElementById('nut-editor').style.display = 'none';
+  NUT.progId = null;
+}
+
+function renderNutDayTabs() {
+  const plan = S.nutPlans.find(p => p.id === NUT.progId);
+  if(!plan) return;
+  const nutProg = PROGRAMMES_NUT.find(p => p.id === 'pn'+plan.id);
+  const jours = nutProg?.jours || [{nom:'Jour 1', repas:[]}];
+  const el = document.getElementById('nut-day-tabs');
+  el.innerHTML = jours.map((j,i) => `
+    <div onclick="selectNutDay(${i})" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;cursor:pointer;border:1px solid ${i===NUT.dayIdx?'var(--red)':'var(--brd)'};background:${i===NUT.dayIdx?'var(--red)':'transparent'};color:${i===NUT.dayIdx?'#fff':'var(--txt3)'};font-size:12px;font-weight:500;white-space:nowrap;">
+      <span style="width:18px;height:18px;border-radius:50%;background:${i===NUT.dayIdx?'rgba(255,255,255,0.25)':'var(--bg-input)'};display:flex;align-items:center;justify-content:center;font-size:10px;">${i+1}</span>
+      ${j.nom}
+      <span style="font-size:10px;opacity:.7;">${j.repas?.length||0} repas</span>
+    </div>
+  `).join('');
+}
+
+function selectNutDay(idx) {
+  NUT.dayIdx = idx;
+  renderNutDayTabs();
+  renderNutRepas();
+}
+
+function renderNutRepas() {
+  const plan = S.nutPlans.find(p => p.id === NUT.progId);
+  if(!plan) return;
+  const nutProg = PROGRAMMES_NUT.find(p => p.id === 'pn'+plan.id);
+  const jour = nutProg?.jours?.[NUT.dayIdx];
+  const el = document.getElementById('nut-repas-list');
+  if(!el) return;
+  
+  // Update macros bar
+  if(jour) {
+    document.getElementById('nut-bar-kcal').textContent = jour.kcal_total + ' kcal';
+    document.getElementById('nut-bar-prot').textContent = jour.prot_total + 'g';
+    document.getElementById('nut-bar-gluc').textContent = jour.gluc_total + 'g';
+    document.getElementById('nut-bar-lip').textContent = jour.lip_total + 'g';
+  }
+
+  const repas = jour?.repas || [];
+  if(repas.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--txt3);">Aucun repas. Cliquez "+ Ajouter un repas"</div>';
+    return;
+  }
+
+  el.innerHTML = repas.map((r,ri) => {
+    const kcalTotal = r.aliments.reduce((s,a) => s + (a.kcal||0), 0);
+    return `<div class="nut-repas-block">
+      <div class="nut-repas-header">
+        <div style="font-size:14px;font-weight:600;flex:1;">${r.nom}</div>
+        <div style="font-size:11px;padding:2px 10px;border-radius:10px;background:var(--bg-input);color:var(--txt2);">${r.pct}%</div>
+        <div style="font-size:12px;color:var(--txt3);margin-left:8px;">${kcalTotal} kcal</div>
+        <button onclick="deleteNutRepas(${ri})" style="background:transparent;border:none;color:var(--txt3);cursor:pointer;padding:0 4px;font-size:14px;margin-left:8px;">✕</button>
+      </div>
+      ${r.aliments.map((a,ai) => `
+        <div class="nut-ing-row">
+          <div style="flex:1;font-size:13px;">${a.nom}</div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input type="number" value="${a.qte}" min="1" onchange="updateIngQte(${ri},${ai},this.value)" style="width:60px;text-align:center;background:var(--bg-input);border:1px solid var(--brd);border-radius:4px;color:var(--txt);padding:3px 6px;font-size:12px;font-family:'DM Sans',sans-serif;">
+            <span style="font-size:11px;color:var(--txt3);">g</span>
+          </div>
+          <div style="font-size:11px;color:var(--txt3);width:60px;text-align:right;">${a.kcal} kcal</div>
+          <button onclick="deleteIngredient(${ri},${ai})" style="background:transparent;border:none;color:var(--txt3);cursor:pointer;padding:0 4px;font-size:12px;">✕</button>
+        </div>
+      `).join('')}
+      <div style="padding:8px 16px;border-top:1px dashed rgba(255,255,255,0.06);">
+        <button onclick="NUT.activeRepas=${ri};toast('Cliquez sur un aliment dans la biblioth\u00e8que pour l\u2019ajouter');" 
+          style="background:transparent;border:none;color:var(--txt3);cursor:pointer;font-size:12px;padding:0;">
+          + Ajouter un aliment
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addAlimentToRepas(alimentId) {
+  if(NUT.progId === null) { toast('Ouvrez un programme d\u2019abord'); return; }
+  const aliment = ALIMENTS_DB.find(a => a.id === alimentId);
+  if(!aliment) return;
+  const nutProg = PROGRAMMES_NUT.find(p => p.id === 'pn'+NUT.progId);
+  if(!nutProg) return;
+  const jour = nutProg.jours[NUT.dayIdx];
+  if(!jour) return;
+  const repasIdx = NUT.activeRepas !== undefined ? NUT.activeRepas : 0;
+  if(!jour.repas[repasIdx]) return;
+  jour.repas[repasIdx].aliments.push({nom:aliment.nom, qte:100, kcal:aliment.kcal, prot:aliment.prot, gluc:aliment.gluc, lip:aliment.lip});
+  renderNutRepas();
+  toast('✓ ' + aliment.nom + ' ajouté');
+}
+
+function addNutRepas() {
+  const nutProg = PROGRAMMES_NUT.find(p => p.id === 'pn'+NUT.progId);
+  if(!nutProg) return;
+  const jour = nutProg.jours[NUT.dayIdx];
+  if(!jour) return;
+  const noms = ['Petit-déjeuner','Collation matin','Déjeuner','Collation soir','Dîner','Encas'];
+  const nom = noms[jour.repas.length] || 'Repas ' + (jour.repas.length+1);
+  jour.repas.push({nom, pct:0, aliments:[]});
+  renderNutDayTabs();
+  renderNutRepas();
+}
+
+function deleteNutRepas(ri) {
+  const nutProg = PROGRAMMES_NUT.find(p => p.id === 'pn'+NUT.progId);
+  if(!nutProg) return;
+  nutProg.jours[NUT.dayIdx].repas.splice(ri, 1);
+  renderNutRepas();
+}
+
+function deleteIngredient(ri, ai) {
+  const nutProg = PROGRAMMES_NUT.find(p => p.id === 'pn'+NUT.progId);
+  if(!nutProg) return;
+  nutProg.jours[NUT.dayIdx].repas[ri].aliments.splice(ai, 1);
+  renderNutRepas();
+}
+
+function updateIngQte(ri, ai, val) {
+  const nutProg = PROGRAMMES_NUT.find(p => p.id === 'pn'+NUT.progId);
+  if(!nutProg) return;
+  const ing = nutProg.jours[NUT.dayIdx].repas[ri].aliments[ai];
+  const aliment = ALIMENTS_DB.find(a => a.nom === ing.nom);
+  ing.qte = +val;
+  if(aliment) {
+    ing.kcal = Math.round(aliment.kcal * val / 100);
+    ing.prot = Math.round(aliment.prot * val / 100 * 10) / 10;
+    ing.gluc = Math.round(aliment.gluc * val / 100 * 10) / 10;
+    ing.lip = Math.round(aliment.lip * val / 100 * 10) / 10;
+  }
+  renderNutRepas();
+}
+
+function addNutDay() {
+  const nutProg = PROGRAMMES_NUT.find(p => p.id === 'pn'+NUT.progId);
+  if(!nutProg) return;
+  nutProg.jours.push({nom:'Jour '+(nutProg.jours.length+1), kcal_total:0, prot_total:0, gluc_total:0, lip_total:0, repas:[]});
+  renderNutDayTabs();
+}
+
+function saveNutProgramme() {
+  if(window.fbSaveNutPlans) window.fbSaveNutPlans();
+  toast('✓ Programme publié !');
+  closeNutEditor();
+}
+
+function nutShowBibliotheque() {
+  const tabs = document.querySelectorAll('.nut-tab');
+  tabs.forEach((t,i) => { if(i===2) { t.click(); } });
+}
+
+NUT.activeRepas = 0;
 
 // INIT
 renderDash();
