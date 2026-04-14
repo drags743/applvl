@@ -1455,458 +1455,482 @@ function filterClients(q){
 }
 
 function openCli(id){
-  S.cur.clientId=id;S.cur.tab='overview';
+  S.cur.clientId=id; S.cur.tab='overview';
   nav('clients');
-  const c=S.clients.find(x=>x.id===id);
+  var c=S.clients.find(function(x){return x.id===id;});
   if(!c)return;
-  const progs=S.programs.filter(p=>p.client_id===id);
-  const np=S.nutPlans.find(n=>n.client_id===id);
-  document.getElementById('cl-detail').innerHTML=`
-  <div class="cd-header">
-    <div class="cd-top">
-      <div class="av-lg" style="background:${c.color}22;color:${c.color}">${ini(c.prenom,c.nom)}</div>
-      <div><div class="cd-name">${c.prenom} ${c.nom}</div><span class="badge ${c.status==='active'?'ba':'bb'}">${c.status==='active'?'Actif':'Bloqué'}</span></div>
-      <div class="cd-actions"><button class="btn btn-p" onclick="toast('Modification — bientôt disponible')">Modifier</button></div>
-    </div>
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('overview',this)">Vue d'ensemble</div>
-      <div class="tab" onclick="switchTab('info',this)">Informations</div>
-      <div class="tab" onclick="switchTab('sport',this)">Sport</div>
-      <div class="tab" onclick="switchTab('nutrition',this)">Nutrition</div>
-      <div class="tab" onclick="switchTab('suivi',this)">Suivi</div>
-      <div class="tab" onclick="switchTab('stats',this)">Statistiques</div>
-      <div class="tab" onclick="switchTab('calendrier-cli',this)">Calendrier</div>
-      <div class="tab" onclick="switchTab('poids-cli',this)">📊 Courbes</div>
-      <div class="tab" onclick="switchTab('corps-cli',this)">🏆 Corps</div>
-    </div>
-  </div>
 
-  <div class="tc active" id="tc-overview">
-    <div class="ig" style="margin-bottom:16px;">
-      <div class="is"><div class="is-t">Contact</div>
-        <div class="ir"><span class="ik">Email</span><span class="iv" style="font-size:12px;">${c.email}</span></div>
-        <div class="ir"><span class="ik">Tél.</span><span class="iv">${c.tel}</span></div>
-        <div class="ir"><span class="ik">Code portail</span><span class="iv">${c.code||'—'}</span></div>
-        <div class="ir"><span class="ik">Objectif</span><span class="iv">${c.objectif}</span></div>
-      </div>
-      <div class="is"><div class="is-t">Coaching</div>
-        <div class="ir"><span class="ik">Début</span><span class="iv">${c.debut}</span></div>
-        <div class="ir"><span class="ik">Fin</span><span class="iv">${c.fin||'—'}</span></div>
-        <div class="ir"><span class="ik">Niveau</span><span class="iv">${c.niveau}</span></div>
-        <div class="ir"><span class="ik">Statut</span><span class="iv">${c.status==='active'?'Actif':'Bloqué'}</span></div>
-      </div>
-    </div>
-    <div class="is" style="margin-bottom:16px;"><div class="is-t">Programmes sport assignés</div>
-      ${progs.length?progs.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--brd);"><div style="width:6px;height:6px;border-radius:50%;background:var(--red-br);flex-shrink:0;"></div><span style="font-size:13px;font-weight:500;flex:1;">${p.nom}</span><span class="tag tag-r">${p.type}</span><div style="width:80px;"><div class="pb"><div class="pf" style="width:${p.progress}%"></div></div><div style="font-size:9px;color:var(--txt3);text-align:right;">${p.progress}%</div></div></div>`).join(''):'<div style="font-size:12px;color:var(--txt3);padding:12px 0;">Aucun programme.</div>'}
-    </div>
-    <div class="is"><div class="is-t">Données — Aperçu</div>
-      <div class="mg"><div class="mc"><div class="mv" style="color:var(--red-br)">${c.poids}</div><div class="ml">Poids kg</div></div><div class="mc"><div class="mv">${c.taille}</div><div class="ml">Taille cm</div></div><div class="mc"><div class="mv">${c.kcal}</div><div class="ml">kcal/j</div></div></div>
-    </div>
-  </div>
+  // Use a div to build HTML safely
+  var d=document.getElementById('cl-detail');
+  d.innerHTML='';
 
-  <div class="tc" id="tc-info">
-    <div class="ig">
-      <div class="is"><div class="is-t">Profil</div>
-        <div class="ir"><span class="ik">Genre</span><span class="iv">${c.genre}</span></div>
-        <div class="ir"><span class="ik">Âge</span><span class="iv">${c.age} ans</span></div>
-        <div class="ir"><span class="ik">Taille</span><span class="iv">${c.taille} cm</span></div>
-        <div class="ir"><span class="ik">Poids</span><span class="iv">${c.poids} kg</span></div>
-        <div class="ir"><span class="ik">Type de corps</span><span class="iv">${c.type_corps}</span></div>
-        <div class="ir"><span class="ik">Niveau</span><span class="iv">${c.niveau}</span></div>
-      </div>
-      <div class="is"><div class="is-t">Objectifs</div>
-        <div class="ir"><span class="ik">Objectif</span><span class="iv">${c.objectif}</span></div>
-        <div class="ir"><span class="ik">Début</span><span class="iv">${c.debut}</span></div>
-        <div class="ir"><span class="ik">Fin prévue</span><span class="iv">${c.fin||'—'}</span></div>
-        <div class="ir"><span class="ik">Calories/jour</span><span class="iv">${c.kcal} kcal</span></div>
-      </div>
-      <div class="is"><div class="is-t">Macros cibles</div>
-        <div class="ir"><span class="ik">Protéines</span><span class="iv">${c.prot}g</span></div>
-        <div class="ir"><span class="ik">Glucides</span><span class="iv">${c.gluc}g</span></div>
-        <div class="ir"><span class="ik">Lipides</span><span class="iv">${c.lip}g</span></div>
-      </div>
-      <div class="is"><div class="is-t">Répartition / repas</div>
-        <div class="ir"><span class="ik">Petit-déj.</span><span class="iv">${Math.round(c.kcal*.25)} kcal</span></div>
-        <div class="ir"><span class="ik">Déjeuner</span><span class="iv">${Math.round(c.kcal*.40)} kcal</span></div>
-        <div class="ir"><span class="ik">Dîner</span><span class="iv">${Math.round(c.kcal*.25)} kcal</span></div>
-        <div class="ir"><span class="ik">Collation</span><span class="iv">${Math.round(c.kcal*.10)} kcal</span></div>
-      </div>
-    </div>
-  </div>
+  // Header
+  var hdr=document.createElement('div');
+  hdr.className='cd-header';
+  hdr.innerHTML=[
+    '<div class="cd-top">',
+    '  <div class="av-lg" style="background:'+c.color+'22;color:'+c.color+'">'+ini(c.prenom,c.nom)+'</div>',
+    '  <div><div class="cd-name">'+c.prenom+' '+c.nom+'</div>',
+    '  <span class="badge '+(c.status==='active'?'ba':'bb')+'">'+(c.status==='active'?'Actif':'Bloqué')+'</span></div>',
+    '  <button class="btn btn-p" style="margin-left:auto;" id="btn-modif-cli">Modifier</button>',
+    '</div>',
+    '<div class="tabs" style="overflow-x:auto;display:flex;gap:0;" id="cli-tabs">',
+    '  <div class="tab active">Vue d&#39;ensemble</div>',
+    '  <div class="tab">Informations</div>',
+    '  <div class="tab">Sport</div>',
+    '  <div class="tab">Nutrition</div>',
+    '  <div class="tab">Suivi</div>',
+    '  <div class="tab">Statistiques</div>',
+    '  <div class="tab">Calendrier</div>',
+    '  <div class="tab">📊 Courbes</div>',
+    '  <div class="tab">🏆 Corps</div>',
+    '</div>'
+  ].join('');
+  d.appendChild(hdr);
 
-  <div class="tc" id="tc-sport">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <div style="font-size:14px;font-weight:500;">Séances planifiées</div>
-      <button class="btn btn-p" onclick="openModal('mo-prog')">+ Gérer les programmes</button>
-    </div>
-    ${progs.length?progs.flatMap(p=>p.seances).map(s=>`
-      <div class="sb-b">
-        <div class="sb-h"><div class="sb-num">S</div><div class="sb-nm">${s.nom}</div><span class="tag">${s.exercises.length} ex.</span>${s.done?'<span class="badge ba">Terminée</span>':''}</div>
-        <div class="sb-exs">
-          ${s.exercises.map(e=>{const ex=S.exercises.find(x=>x.id===e.id);return ex?`<div class="ex-row"><span style="font-size:18px;">${ex.icon}</span><span class="er-name">${ex.nom}</span><div class="si-g"><input class="mi" type="number" value="${e.sets}" title="Séries"><span class="ml2">séries</span><span style="color:var(--txt3)">×</span><input class="mi" type="number" value="${e.reps}" title="Reps"><span class="ml2">reps</span>${e.poids_cible?`<input class="mi" type="number" value="${e.poids_cible}" title="Poids kg"><span class="ml2">kg</span>`:''}</div></div>`:'';}).join('')}
-        </div>
-      </div>
-    `).join(''):'<div class="empty-s"><p>Aucune séance planifiée pour ce client.</p></div>'}
-  </div>
+  // Tab names -> tc ids
+  var tabKeys=['overview','info','sport','nutrition','suivi','stats','calendrier-cli','poids-cli','corps-cli'];
+  
+  // Wire up tab clicks
+  var tabDivs=hdr.querySelectorAll('.tab');
+  tabDivs.forEach(function(tab,i){
+    tab.addEventListener('click',function(){switchTab(tabKeys[i],tab);});
+  });
+  
+  // Modifier button
+  hdr.querySelector('#btn-modif-cli').addEventListener('click',function(){openModal('mo-client');});
 
-  <div class="tc" id="tc-nutrition">
-    <!-- HEADER -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-      <div>
-        <div style="font-size:16px;font-weight:600;">Suivi nutritionnel</div>
-        <div style="font-size:12px;color:var(--txt3);">Suivi de ${c.prenom} ${c.nom}</div>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-p" onclick="openNutEditor(1)" style="font-size:12px;">Gérer les programmes</button>
-      </div>
-    </div>
+  // Create all tc divs
+  tabKeys.forEach(function(key){
+    var tc=document.createElement('div');
+    tc.className='tc'+(key==='overview'?' active':'');
+    tc.id='tc-'+key;
+    d.appendChild(tc);
+  });
 
-    <!-- PERIODE SELECTOR -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-      <div style="display:flex;border:1px solid var(--brd);border-radius:var(--rs);overflow:hidden;">
-        <button class="nut-suivi-period active" id="nsp-7j-${c.id}" onclick="setNutSuiviPeriod(${c.id},'7j',this)" style="padding:5px 14px;font-size:11px;font-weight:600;border:none;background:var(--red);color:#fff;cursor:pointer;">7 jours</button>
-        <button class="nut-suivi-period" id="nsp-1j-${c.id}" onclick="setNutSuiviPeriod(${c.id},'1j',this)" style="padding:5px 14px;font-size:11px;font-weight:600;border:none;background:transparent;color:var(--txt3);cursor:pointer;border-left:1px solid var(--brd);">1 jour</button>
-      </div>
-      <button class="fb" onclick="nutSuiviNav(${c.id},-1)" style="padding:5px 10px;">←</button>
-      <span style="font-size:13px;font-weight:500;" id="nut-suivi-period-lbl-${c.id}">8 avr. - 14 avr.</span>
-      <button class="fb" onclick="nutSuiviNav(${c.id},1)" style="padding:5px 10px;">→</button>
-    </div>
-
-    <!-- STATS CARDS: Calories + Macros -->
-    <div class="card" style="padding:20px;margin-bottom:16px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-        <!-- Calories -->
-        <div style="display:flex;flex-direction:column;align-items:center;">
-          <div style="font-size:13px;font-weight:500;color:var(--txt3);margin-bottom:14px;">Calories moyennes consommées</div>
-          <div style="position:relative;width:140px;height:140px;margin-bottom:10px;">
-            <svg viewBox="0 0 140 140" width="140" height="140">
-              <circle cx="70" cy="70" r="55" fill="none" stroke="var(--brd)" stroke-width="10"/>
-              <circle cx="70" cy="70" r="55" fill="none" stroke="var(--red-br)" stroke-width="10"
-                stroke-dasharray="${Math.min(100,(S.clientStats&&S.clientStats[c.id]?.calories?.length?Math.round(S.clientStats[c.id].calories.slice(-7).reduce((s,e)=>s+e.val,0)/Math.min(7,S.clientStats[c.id].calories.slice(-7).length)):0)/c.kcal*100)*3.456} 345.6"
-                stroke-linecap="round" transform="rotate(-90 70 70)"/>
-            </svg>
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-              <div style="font-family:'Montserrat',sans-serif;font-size:26px;font-weight:600;" id="nut-avg-kcal-${c.id}">0</div>
-              <div style="font-size:11px;color:var(--txt3);">/ ${c.kcal} kcal</div>
-            </div>
-          </div>
-          <div style="width:100%;background:var(--brd);border-radius:4px;height:6px;overflow:hidden;margin-bottom:4px;">
-            <div id="nut-prog-bar-${c.id}" style="height:100%;background:var(--red-br);border-radius:4px;width:0%;transition:.5s;"></div>
-          </div>
-          <div style="font-size:11px;color:var(--txt3);display:flex;justify-content:space-between;width:100%;">
-            <span>Progression</span>
-            <span id="nut-prog-pct-${c.id}">0%</span>
-          </div>
-        </div>
-
-        <!-- Macros -->
-        <div>
-          <div style="font-size:13px;font-weight:500;color:var(--txt3);margin-bottom:14px;">Macronutriments moyens consommés</div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-            <!-- Protéines -->
-            <div style="text-align:center;">
-              <div style="font-size:11px;color:var(--txt3);margin-bottom:10px;">🍗 Protéines</div>
-              <div style="position:relative;width:80px;height:80px;margin:0 auto 8px;">
-                <svg viewBox="0 0 80 80" width="80" height="80">
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="var(--brd)" stroke-width="7"/>
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="#e74c3c" stroke-width="7"
-                    stroke-dasharray="0 201" id="nut-macro-prot-arc-${c.id}"
-                    stroke-linecap="round" transform="rotate(-90 40 40)"/>
-                </svg>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-                  <div style="font-size:14px;font-weight:600;" id="nut-avg-prot-${c.id}">0</div>
-                </div>
-              </div>
-              <div style="font-size:10px;color:var(--txt3);">/ ${c.prot||100} g</div>
-            </div>
-            <!-- Glucides -->
-            <div style="text-align:center;">
-              <div style="font-size:11px;color:var(--txt3);margin-bottom:10px;">🍚 Glucides</div>
-              <div style="position:relative;width:80px;height:80px;margin:0 auto 8px;">
-                <svg viewBox="0 0 80 80" width="80" height="80">
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="var(--brd)" stroke-width="7"/>
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="#f39c12" stroke-width="7"
-                    stroke-dasharray="0 201" id="nut-macro-gluc-arc-${c.id}"
-                    stroke-linecap="round" transform="rotate(-90 40 40)"/>
-                </svg>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-                  <div style="font-size:14px;font-weight:600;" id="nut-avg-gluc-${c.id}">0</div>
-                </div>
-              </div>
-              <div style="font-size:10px;color:var(--txt3);">/ ${c.gluc||200} g</div>
-            </div>
-            <!-- Lipides -->
-            <div style="text-align:center;">
-              <div style="font-size:11px;color:var(--txt3);margin-bottom:10px;">🫒 Lipides</div>
-              <div style="position:relative;width:80px;height:80px;margin:0 auto 8px;">
-                <svg viewBox="0 0 80 80" width="80" height="80">
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="var(--brd)" stroke-width="7"/>
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="#3498db" stroke-width="7"
-                    stroke-dasharray="0 201" id="nut-macro-lip-arc-${c.id}"
-                    stroke-linecap="round" transform="rotate(-90 40 40)"/>
-                </svg>
-                <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-                  <div style="font-size:14px;font-weight:600;" id="nut-avg-lip-${c.id}">0</div>
-                </div>
-              </div>
-              <div style="font-size:10px;color:var(--txt3);">/ ${c.lip||70} g</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- APERÇU 7 JOURS -->
-    <div style="font-size:14px;font-weight:600;margin-bottom:12px;" id="nut-suivi-apercu-lbl-${c.id}">Aperçu 7 jours</div>
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:20px;" id="nut-suivi-days-${c.id}"></div>
-
-    <!-- PROGRAMME ASSIGNÉ -->
-    <div class="card" style="padding:16px;margin-bottom:16px;">
-      <div style="font-size:13px;font-weight:600;margin-bottom:12px;">Programme assigné</div>
-      <div id="nut-prog-assigned-${c.id}"></div>
-    </div>
-
-    <div data-nut-suivi="${c.id}" style="display:none;"></div>
-  <div class="tc" id="tc-suivi">
-    <div style="font-size:14px;font-weight:500;margin-bottom:16px;">Habitudes & Suivi</div>
-    ${S.habitudes.map(h=>`<div class="habit-i"><div class="hck ${h.done?'done':''}" onclick="tglHabit(${h.id})">${h.done?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':''}</div><span style="font-size:13.5px;font-weight:500;flex:1;">${h.nom}</span><span style="font-size:11px;color:var(--txt3);">🔥 ${h.streak}j</span></div>`).join('')}
-  </div>
-
-  <div class="tc" id="tc-stats">
-    <!-- PERIOD FILTERS -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-      <div style="font-size:14px;font-weight:600;">Données de suivi</div>
-      <div style="display:flex;gap:4px;">${['1S','2S','4S','6S','8S','10S','12S'].map((p,i)=>`
-        <button onclick="setStatPeriod_cli(this,'${p}',${c.id})" class="stat-period-btn ${i===3?'active':''}" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid ${i===3?'var(--red)':'var(--brd)'};background:${i===3?'var(--red)':'transparent'};color:${i===3?'#fff':'var(--txt3)'};cursor:pointer;font-family:'DM Sans',sans-serif;">${p}</button>
-      `).join('')}</div>
-    </div>
-
-    <!-- APPLE HEALTH BANNER -->
-    <div style="background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.2);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
-      <span style="font-size:22px;">🍎</span>
-      <div style="flex:1;">
-        <div style="font-size:12px;font-weight:600;color:#f39c12;">Intégration Apple Health</div>
-        <div style="font-size:11px;color:var(--txt3);">Demandez à votre client de connecter Apple Santé via l'espace client pour importer automatiquement ses pas, sommeil, calories et hydratation.</div>
-      </div>
-      <span style="font-size:10px;padding:3px 10px;border-radius:10px;background:rgba(255,193,7,0.15);color:#f39c12;white-space:nowrap;font-weight:600;">En attente</span>
-    </div>
-
-    <!-- STATS CARDS ROW -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
-      <div class="sc" style="padding:14px;cursor:pointer;" onclick="openStatInput(${c.id},'poids')" title="Cliquer pour saisir">
-        <div class="sc-lbl">POIDS ACTUEL</div>
-        <div class="sc-val" style="font-size:22px;" id="stat-poids-val-${c.id}">${c.poids} <span>kg</span></div>
-        <div class="sc-sub">${c.objectif}</div>
-      </div>
-      <div class="sc" style="padding:14px;cursor:pointer;" onclick="openStatInput(${c.id},'pas')" title="Cliquer pour saisir">
-        <div class="sc-lbl">PAS MOY./JOUR</div>
-        <div class="sc-val" style="font-size:22px;" id="stat-pas-val-${c.id}">—</div>
-        <div class="sc-sub" style="color:#f39c12;">Via Apple Health</div>
-      </div>
-      <div class="sc" style="padding:14px;cursor:pointer;" onclick="openStatInput(${c.id},'sommeil')" title="Cliquer pour saisir">
-        <div class="sc-lbl">SOMMEIL MOY.</div>
-        <div class="sc-val" style="font-size:22px;" id="stat-sommeil-val-${c.id}">—</div>
-        <div class="sc-sub" style="color:#f39c12;">Via Apple Health</div>
-      </div>
-      <div class="sc" style="padding:14px;cursor:pointer;" onclick="openStatInput(${c.id},'hydratation')" title="Cliquer pour saisir">
-        <div class="sc-lbl">HYDRATATION</div>
-        <div class="sc-val" style="font-size:22px;" id="stat-hydra-val-${c.id}">—</div>
-        <div class="sc-sub" style="color:#f39c12;">Via Apple Health</div>
-      </div>
-    </div>
-
-    <!-- BOUTON SAISIE RAPIDE -->
-    <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
-      <button class="btn btn-p" onclick="openStatInput(${c.id},'poids')" style="font-size:12px;padding:7px 14px;">+ Saisir des données</button>
-    </div>
-
-    <!-- CHARTS GRID -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
-      <div class="card" style="padding:16px;">
-        <div style="font-size:11px;font-weight:600;color:var(--red-br);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">⚖️ Évolution du poids (kg)</div>
-        <div id="cli-chart-poids-${c.id}" style="height:110px;"></div>
-      </div>
-      <div class="card" style="padding:16px;">
-        <div style="font-size:11px;font-weight:600;color:#e67e22;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">🔥 Calories brûlées / jour</div>
-        <div id="cli-chart-cal-${c.id}" style="height:110px;"></div>
-      </div>
-      <div class="card" style="padding:16px;">
-        <div style="font-size:11px;font-weight:600;color:#3498db;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">👟 Pas / jour</div>
-        <div id="cli-chart-pas-${c.id}" style="height:110px;"></div>
-      </div>
-      <div class="card" style="padding:16px;">
-        <div style="font-size:11px;font-weight:600;color:#9b59b6;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">😴 Sommeil (heures)</div>
-        <div id="cli-chart-sommeil-${c.id}" style="height:110px;"></div>
-      </div>
-    </div>
-    <div class="card" style="padding:16px;margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:600;color:#1abc9c;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">💧 Hydratation (L/jour)</div>
-      <div id="cli-chart-hydra-${c.id}" style="height:90px;"></div>
-    </div>
-
-    <div data-cli-stats='${c.id}' style='display:none;'></div>
-  <div class="tc" id="tc-calendrier-cli">
-    <!-- TOPBAR CALENDRIER style Ekklo -->
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-      <!-- Navigation mois -->
-      <div style="display:flex;align-items:center;gap:6px;">
-        <button class="fb" onclick="clientCalNav(${c.id},-1)" style="padding:6px 10px;">←</button>
-        <span style="font-size:14px;font-weight:600;min-width:140px;text-align:center;" id="cal-month-lbl-${c.id}"></span>
-        <button class="fb" onclick="clientCalNav(${c.id},1)" style="padding:6px 10px;">→</button>
-        <button class="fb" onclick="clientCalGoToday(${c.id})" style="padding:6px 12px;font-size:11px;">Aujourd'hui</button>
-      </div>
-      <!-- Vue semaine/mois -->
-      <div style="display:flex;gap:4px;margin-left:auto;">
-        <button class="fb active" id="cal-view-week-${c.id}" onclick="setCalView(${c.id},'week',this)" style="font-size:11px;padding:5px 12px;">Semaine</button>
-        <button class="fb" id="cal-view-month-${c.id}" onclick="setCalView(${c.id},'month',this)" style="font-size:11px;padding:5px 12px;">Mois</button>
-      </div>
-      <!-- Bouton Ajouter dropdown -->
-      <div style="position:relative;">
-        <button class="btn btn-p" onclick="toggleCalAddMenu(${c.id})" style="display:flex;align-items:center;gap:6px;font-size:12px;">
-          + Ajouter <span style="font-size:10px;">▼</span>
-        </button>
-        <div id="cal-add-menu-${c.id}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--bg-card);border:1px solid var(--brd);border-radius:var(--r);width:200px;z-index:100;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
-          <div onclick="openCalAddModal(${c.id},'seance')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
-            <span style="font-size:16px;">🏋️</span> Séance
-          </div>
-          <div onclick="openCalAddModal(${c.id},'rdv')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
-            <span style="font-size:16px;">📅</span> Rendez-vous
-          </div>
-          <div onclick="openCalAddModal(${c.id},'bilan')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
-            <span style="font-size:16px;">📋</span> Bilan
-          </div>
-          <div onclick="openCalAddModal(${c.id},'note')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
-            <span style="font-size:16px;">📝</span> Note / Rappel
-          </div>
-          <div onclick="openCalAddModal(${c.id},'objectif')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
-            <span style="font-size:16px;">🎯</span> Objectif
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- VUE SEMAINE -->
-    <div id="cal-view-semaine-${c.id}">
-      <div id="cli-cal-week-${c.id}"></div>
-    </div>
-
-    <!-- VUE MOIS -->
-    <div id="cal-view-mois-${c.id}" style="display:none;">
-      <div class="cal-g" id="cli-cal-grid-${c.id}"></div>
-    </div>
-  </div>
-    <div data-render-cal="${c.id}" style="display:none;"></div>
-
-  <!-- ===== TAB: COURBES ===== -->
-  <div class="tc" id="tc-poids-cli">
-    <!-- HEADER -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-      <div>
-        <div style="font-size:16px;font-weight:600;">Courbes de progression</div>
-        <div style="font-size:12px;color:var(--txt3);">Évolution sur la durée du coaching</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        ${['1S','2S','4S','8S','12S','6M'].map((p,i)=>`
-          <button class="stat-period-btn ${i===2?'active':''}" onclick="setCourbePeriod(${c.id},'${p}',this)"
-            style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid ${i===2?'var(--red)':'var(--brd)'};background:${i===2?'var(--red)':'transparent'};color:${i===2?'#fff':'var(--txt3)'};cursor:pointer;font-family:'DM Sans',sans-serif;">${p}</button>
-        `).join('')}
-      </div>
-    </div>
-
-    <!-- METRIC SELECTOR -->
-    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;" id="courbe-metrics-${c.id}">
-      <button class="courbe-metric-btn active" onclick="setCourbeMetric(${c.id},'poids',this)" style="padding:6px 14px;border-radius:20px;border:1px solid var(--red);background:var(--red-gl);color:var(--red-br);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">⚖️ Poids</button>
-      <button class="courbe-metric-btn" onclick="setCourbeMetric(${c.id},'calories',this)" style="padding:6px 14px;border-radius:20px;border:1px solid var(--brd);background:transparent;color:var(--txt3);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🔥 Calories</button>
-      <button class="courbe-metric-btn" onclick="setCourbeMetric(${c.id},'pas',this)" style="padding:6px 14px;border-radius:20px;border:1px solid var(--brd);background:transparent;color:var(--txt3);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">👟 Pas</button>
-      <button class="courbe-metric-btn" onclick="setCourbeMetric(${c.id},'sommeil',this)" style="padding:6px 14px;border-radius:20px;border:1px solid var(--brd);background:transparent;color:var(--txt3);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">😴 Sommeil</button>
-      <button class="courbe-metric-btn" onclick="setCourbeMetric(${c.id},'hydratation',this)" style="padding:6px 14px;border-radius:20px;border:1px solid var(--brd);background:transparent;color:var(--txt3);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">💧 Hydratation</button>
-    </div>
-
-    <!-- STATS CARDS -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;" id="courbe-cards-${c.id}">
-      <div class="sc" style="padding:14px;">
-        <div class="sc-lbl" id="courbe-card-lbl-1-${c.id}">ACTUEL</div>
-        <div class="sc-val" style="font-size:22px;" id="courbe-card-val-1-${c.id}">—</div>
-      </div>
-      <div class="sc" style="padding:14px;">
-        <div class="sc-lbl" id="courbe-card-lbl-2-${c.id}">MINIMUM</div>
-        <div class="sc-val" style="font-size:22px;" id="courbe-card-val-2-${c.id}">—</div>
-      </div>
-      <div class="sc" style="padding:14px;">
-        <div class="sc-lbl" id="courbe-card-lbl-3-${c.id}">MAXIMUM</div>
-        <div class="sc-val" style="font-size:22px;" id="courbe-card-val-3-${c.id}">—</div>
-      </div>
-      <div class="sc" style="padding:14px;">
-        <div class="sc-lbl" id="courbe-card-lbl-4-${c.id}">ÉVOLUTION</div>
-        <div class="sc-val" style="font-size:22px;" id="courbe-card-val-4-${c.id}">—</div>
-      </div>
-    </div>
-
-    <!-- MAIN CHART -->
-    <div class="card" style="padding:20px;margin-bottom:16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="font-size:13px;font-weight:600;" id="courbe-chart-title-${c.id}">Évolution du poids</div>
-        <button class="btn" onclick="openStatInput(${c.id},'poids')" style="font-size:11px;">+ Saisir</button>
-      </div>
-      <div id="courbe-main-chart-${c.id}" style="height:200px;"></div>
-    </div>
-
-    <!-- SECONDARY CHARTS GRID -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
-      <div class="card" style="padding:16px;">
-        <div style="font-size:11px;font-weight:600;color:var(--red-br);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">⚖️ Poids (kg)</div>
-        <div id="courbe-mini-poids-${c.id}" style="height:80px;"></div>
-      </div>
-      <div class="card" style="padding:16px;">
-        <div style="font-size:11px;font-weight:600;color:#e67e22;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">🔥 Calories (kcal)</div>
-        <div id="courbe-mini-cal-${c.id}" style="height:80px;"></div>
-      </div>
-      <div class="card" style="padding:16px;">
-        <div style="font-size:11px;font-weight:600;color:#3498db;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">👟 Pas / jour</div>
-        <div id="courbe-mini-pas-${c.id}" style="height:80px;"></div>
-      </div>
-      <div class="card" style="padding:16px;">
-        <div style="font-size:11px;font-weight:600;color:#9b59b6;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">😴 Sommeil (h)</div>
-        <div id="courbe-mini-sommeil-${c.id}" style="height:80px;"></div>
-      </div>
-    </div>
-
-    <!-- SAISIE RAPIDE -->
-    <div class="card" style="padding:16px;">
-      <div style="font-size:13px;font-weight:600;margin-bottom:14px;">Saisie rapide</div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;">
-        ${[{t:'poids',e:'⚖️',u:'kg'},{t:'calories',e:'🔥',u:'kcal'},{t:'pas',e:'👟',u:'pas'},{t:'sommeil',e:'😴',u:'h'},{t:'hydratation',e:'💧',u:'L'}].map(m=>`
-          <button onclick="openStatInput(${c.id},'${m.t}')" class="card" style="padding:12px 8px;text-align:center;cursor:pointer;border:1px solid var(--brd);border-radius:var(--rs);background:var(--bg-card);transition:.15s;" onmouseover="this.style.borderColor='var(--red-br)'" onmouseout="this.style.borderColor='var(--brd)'">
-            <div style="font-size:22px;margin-bottom:4px;">${m.e}</div>
-            <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em;">${m.t}</div>
-            <div style="font-size:9px;color:var(--txt3);">${m.u}</div>
-          </button>
-        `).join('')}
-      </div>
-    </div>
-
-    <div data-courbe="${c.id}" style="display:none;"></div>
-  </div>
-
-  <!-- ===== TAB: CORPS ===== -->
-  <div class="tc" id="tc-corps-cli">
-    <div data-corps="${c.id}" style="display:none;"></div>
-    <div id="corps-container-${c.id}"></div>
-  </div>
-    `;
+  // Render all tabs
+  renderTabOverview(id);
   renderClients();
-  // Post-render: fill in dynamic sections
-  setTimeout(() => {
-    // Fill assigned nutrition programme
-    const nutEl = document.getElementById('nut-prog-assigned-' + id);
-    if (nutEl) {
-      const np = S.nutPlans.find(n => n.client_id === id);
-      nutEl.innerHTML = np
-        ? '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;"><div><div style="font-size:14px;font-weight:500;">' + np.nom + '</div><div style="font-size:11px;color:var(--txt3);margin-top:3px;">' + np.kcal + ' kcal · ' + np.prot + 'g prot · ' + np.gluc + 'g gluc · ' + np.lip + 'g lip</div></div><button class="btn" onclick="openNutEditor(' + np.id + ')" style="font-size:11px;white-space:nowrap;">Voir →</button></div>'
-        : '<div style="color:var(--txt3);font-size:13px;">Aucun programme assigné.</div>';
-    }
-  }, 50);
+  setTimeout(function(){
+    renderTabInfo(id);
+    renderTabSport(id);
+    renderTabNutrition(id);
+    renderTabSuivi(id);
+    renderTabStats(id);
+    renderTabCalendrier(id);
+    renderTabCourbes(id);
+    renderTabCorps(id);
+  },40);
 }
+
+function cliRow(label,val){
+  return '<div class="ir"><span class="ik">'+label+'</span><span class="iv">'+val+'</span></div>';
+}
+
+function renderTabOverview(clientId){
+  var c=S.clients.find(function(x){return x.id===clientId;});
+  var el=document.getElementById('tc-overview');
+  if(!el||!c)return;
+  var progs=S.programs.filter(function(p){return p.client_id===clientId;});
+  var np=S.nutPlans.find(function(n){return n.client_id===clientId;});
+  var stats=getClientStats(clientId);
+  var lastPoids=(stats.poids&&stats.poids.length)?stats.poids[stats.poids.length-1].val:c.poids;
+
+  var progsHtml=progs.length?progs.map(function(p){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--brd);">'+
+      '<div style="display:flex;align-items:center;gap:10px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--red-br);display:inline-block;"></span>'+
+      '<span style="font-size:13px;font-weight:500;">'+p.nom+'</span></div>'+
+      '<div style="display:flex;align-items:center;gap:10px;"><span class="tag tag-r">'+p.type+'</span>'+
+      '<div style="width:80px;height:5px;background:var(--brd);border-radius:3px;overflow:hidden;">'+
+      '<div style="width:'+p.progress+'%;height:100%;background:var(--red-br);border-radius:3px;"></div></div>'+
+      '<span style="font-size:11px;color:var(--txt3);">'+p.progress+'%</span></div></div>';
+  }).join(''):'<div style="color:var(--txt3);font-size:13px;padding:10px 0;">Aucun programme assigné.</div>';
+
+  var npHtml=np?
+    '<div class="is" style="margin-bottom:16px;"><div class="is-t" style="color:var(--red-br)">PLAN NUTRITIONNEL</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px;">'+
+    '<div class="mc" style="padding:12px;text-align:center;"><div class="mv" style="color:var(--red-br);">'+np.kcal+'</div><div class="ml">kcal</div></div>'+
+    '<div class="mc" style="padding:12px;text-align:center;"><div class="mv" style="color:#e74c3c;">'+np.prot+'g</div><div class="ml">Prot.</div></div>'+
+    '<div class="mc" style="padding:12px;text-align:center;"><div class="mv" style="color:#3498db;">'+np.gluc+'g</div><div class="ml">Gluc.</div></div>'+
+    '<div class="mc" style="padding:12px;text-align:center;"><div class="mv" style="color:#f39c12;">'+np.lip+'g</div><div class="ml">Lip.</div></div>'+
+    '</div></div>':'';
+
+  el.innerHTML=
+    '<div class="ig" style="margin-bottom:16px;">'+
+      '<div class="is"><div class="is-t" style="color:var(--red-br)">CONTACT</div>'+
+        cliRow('Email',c.email)+cliRow('Tél.',c.tel||'—')+cliRow('Code portail',c.code)+cliRow('Objectif',c.objectif)+
+      '</div>'+
+      '<div class="is"><div class="is-t" style="color:var(--red-br)">COACHING</div>'+
+        cliRow('Début',c.debut)+cliRow('Fin',c.fin||'—')+cliRow('Niveau',c.niveau)+cliRow('Statut',c.status==='active'?'Actif':'Bloqué')+
+      '</div>'+
+    '</div>'+
+    '<div class="is" style="margin-bottom:16px;"><div class="is-t" style="color:var(--red-br)">PROGRAMMES SPORT ASSIGNÉS</div>'+progsHtml+'</div>'+
+    '<div class="is" style="margin-bottom:16px;"><div class="is-t" style="color:var(--red-br)">DONNÉES — APERÇU</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px;">'+
+        '<div class="mc" style="padding:16px;text-align:center;"><div class="mv" style="font-size:28px;color:var(--red-br);font-family:Montserrat,sans-serif;font-weight:700;">'+lastPoids+'</div><div class="ml">kg</div></div>'+
+        '<div class="mc" style="padding:16px;text-align:center;"><div class="mv" style="font-size:28px;font-family:Montserrat,sans-serif;font-weight:700;">'+c.taille+'</div><div class="ml">cm</div></div>'+
+        '<div class="mc" style="padding:16px;text-align:center;"><div class="mv" style="font-size:28px;font-family:Montserrat,sans-serif;font-weight:700;">'+c.kcal+'</div><div class="ml">kcal/j</div></div>'+
+      '</div>'+
+    '</div>'+
+    npHtml+
+    '<div data-draw-charts="'+clientId+'" style="display:none;"></div>';
+}
+
+function renderTabInfo(clientId){
+  var c=S.clients.find(function(x){return x.id===clientId;});
+  var el=document.getElementById('tc-info');
+  if(!el||!c)return;
+  el.innerHTML=
+    '<div class="ig">'+
+      '<div class="is"><div class="is-t">Informations personnelles</div>'+
+        cliRow('Prénom',c.prenom)+cliRow('Nom',c.nom)+cliRow('Email',c.email)+
+        cliRow('Téléphone',c.tel||'—')+cliRow('Âge',(c.age||'—')+' ans')+cliRow('Genre',c.genre||'—')+
+      '</div>'+
+      '<div class="is"><div class="is-t">Données physiques</div>'+
+        cliRow('Taille',c.taille+' cm')+cliRow('Poids',c.poids+' kg')+
+        cliRow('Type de corps',c.type_corps||'—')+cliRow('Niveau',c.niveau||'—')+
+      '</div>'+
+    '</div>'+
+    '<div class="is" style="margin-top:14px;"><div class="is-t">Plan nutritionnel</div>'+
+      cliRow('Objectif',c.objectif)+cliRow('Calories/jour',c.kcal+' kcal')+
+      cliRow('Protéines',(c.prot||'—')+'g')+cliRow('Glucides',(c.gluc||'—')+'g')+
+      cliRow('Lipides',(c.lip||'—')+'g')+cliRow('Début',c.debut)+cliRow('Fin',c.fin||'—')+
+    '</div>';
+}
+
+function renderTabSport(clientId){
+  var c=S.clients.find(function(x){return x.id===clientId;});
+  var el=document.getElementById('tc-sport');
+  if(!el||!c)return;
+  var progs=S.programs.filter(function(p){return p.client_id===clientId;});
+  var progsHtml=progs.length?progs.map(function(p){
+    return '<div class="pc" style="cursor:pointer;margin-bottom:10px;" onclick="openProgramEditor('+p.id+')">'+
+      '<div class="pn">'+p.nom+'</div><div class="pm"><span class="tag tag-r">'+p.type+'</span></div>'+
+      '<div class="pb"><div class="pf" style="width:'+p.progress+'%"></div></div>'+
+      '<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);padding-left:10px;">'+
+        '<span>Progression</span><span>'+p.progress+'% — Éditer →</span>'+
+      '</div></div>';
+  }).join(''):'<div class="empty-s"><p>Aucun programme assigné.</p></div>';
+  el.innerHTML=
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">'+
+      '<div style="font-size:14px;font-weight:600;">Programmes assignés</div>'+
+      '<button class="btn btn-p" id="btn-new-prog" style="font-size:12px;">+ Nouveau</button>'+
+    '</div>'+progsHtml;
+  var btn=el.querySelector('#btn-new-prog');
+  if(btn)btn.addEventListener('click',function(){openModal('mo-prog');});
+}
+
+function renderTabNutrition(clientId){
+  var c=S.clients.find(function(x){return x.id===clientId;});
+  var el=document.getElementById('tc-nutrition');
+  if(!el||!c)return;
+  var np=S.nutPlans.find(function(n){return n.client_id===clientId;});
+  var macros=[
+    {lbl:'Protéines',col:'#e74c3c',vid:'nut-avg-prot-',aid:'nut-macro-prot-arc-',target:c.prot||100},
+    {lbl:'Glucides',col:'#f39c12',vid:'nut-avg-gluc-',aid:'nut-macro-gluc-arc-',target:c.gluc||200},
+    {lbl:'Lipides',col:'#3498db',vid:'nut-avg-lip-',aid:'nut-macro-lip-arc-',target:c.lip||70}
+  ];
+  el.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">'+
+      '<div style="font-size:16px;font-weight:700;font-family:Montserrat,sans-serif;">Suivi nutritionnel</div>'+
+      '<button class="btn btn-p" id="btn-nut-gerer" style="font-size:12px;">Gérer</button>'+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;">'+
+      '<div style="display:flex;border:1px solid var(--brd);border-radius:var(--rs);overflow:hidden;">'+
+        '<button id="nsp-7j-'+clientId+'" class="nut-period-btn" style="padding:5px 14px;font-size:11px;font-weight:600;border:none;background:var(--red);color:#fff;cursor:pointer;">7 jours</button>'+
+        '<button id="nsp-1j-'+clientId+'" class="nut-period-btn" style="padding:5px 14px;font-size:11px;font-weight:600;border:none;background:transparent;color:var(--txt3);cursor:pointer;border-left:1px solid var(--brd);">1 jour</button>'+
+      '</div>'+
+      '<button class="fb" id="nut-nav-prev" style="padding:5px 10px;">←</button>'+
+      '<span style="font-size:13px;font-weight:500;" id="nut-suivi-period-lbl-'+clientId+'">...</span>'+
+      '<button class="fb" id="nut-nav-next" style="padding:5px 10px;">→</button>'+
+    '</div>'+
+    '<div class="card" style="padding:20px;margin-bottom:16px;">'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">'+
+        '<div style="text-align:center;">'+
+          '<div style="font-size:12px;color:var(--txt3);margin-bottom:12px;">Calories moyennes</div>'+
+          '<div style="position:relative;width:140px;height:140px;margin:0 auto 10px;">'+
+            '<svg viewBox="0 0 140 140" width="140" height="140">'+
+              '<circle cx="70" cy="70" r="55" fill="none" stroke="var(--brd)" stroke-width="10"/>'+
+              '<circle cx="70" cy="70" r="55" fill="none" stroke="var(--red-br)" stroke-width="10" stroke-dasharray="0 345.6" id="nut-kcal-arc-'+clientId+'" stroke-linecap="round" transform="rotate(-90 70 70)"/>'+
+            '</svg>'+
+            '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">'+
+              '<div style="font-size:26px;font-weight:700;font-family:Montserrat,sans-serif;" id="nut-avg-kcal-'+clientId+'">0</div>'+
+              '<div style="font-size:11px;color:var(--txt3);">/ '+c.kcal+' kcal</div>'+
+            '</div>'+
+          '</div>'+
+          '<div style="width:100%;background:var(--brd);border-radius:4px;height:6px;overflow:hidden;margin-bottom:4px;">'+
+            '<div id="nut-prog-bar-'+clientId+'" style="height:100%;background:var(--red-br);border-radius:4px;width:0%;transition:.5s;"></div>'+
+          '</div>'+
+          '<div style="font-size:11px;color:var(--txt3);display:flex;justify-content:space-between;"><span>Progression</span><span id="nut-prog-pct-'+clientId+'">0%</span></div>'+
+        '</div>'+
+        '<div><div style="font-size:12px;color:var(--txt3);margin-bottom:12px;">Macros moyens</div>'+
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">'+
+            macros.map(function(m){return(
+              '<div style="text-align:center;">'+
+                '<div style="font-size:10px;color:var(--txt3);margin-bottom:6px;">'+m.lbl+'</div>'+
+                '<div style="position:relative;width:70px;height:70px;margin:0 auto 4px;">'+
+                  '<svg viewBox="0 0 70 70" width="70" height="70">'+
+                    '<circle cx="35" cy="35" r="28" fill="none" stroke="var(--brd)" stroke-width="6"/>'+
+                    '<circle cx="35" cy="35" r="28" fill="none" stroke="'+m.col+'" stroke-width="6" stroke-dasharray="0 176" id="'+m.aid+clientId+'" stroke-linecap="round" transform="rotate(-90 35 35)"/>'+
+                  '</svg>'+
+                  '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;" id="'+m.vid+clientId+'">0</div>'+
+                '</div>'+
+                '<div style="font-size:10px;color:var(--txt3);">/ '+m.target+'g</div>'+
+              '</div>'
+            );}).join('')+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="font-size:14px;font-weight:600;margin-bottom:12px;" id="nut-suivi-apercu-lbl-'+clientId+'">Aperçu 7 jours</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:20px;" id="nut-suivi-days-'+clientId+'"></div>'+
+    '<div class="card" style="padding:16px;">'+
+      '<div style="font-size:13px;font-weight:600;margin-bottom:10px;">Programme assigné</div>'+
+      (np?'<div style="display:flex;align-items:center;justify-content:space-between;">'+
+        '<div><div style="font-size:14px;font-weight:500;">'+np.nom+'</div>'+
+        '<div style="font-size:11px;color:var(--txt3);">'+np.kcal+' kcal</div></div>'+
+        '<button class="btn" id="btn-voir-np" style="font-size:11px;">Voir →</button>'+
+      '</div>':'<div style="color:var(--txt3);font-size:13px;">Aucun programme assigné.</div>')+
+    '</div>'+
+    '<div data-nut-suivi="'+clientId+'" style="display:none;"></div>';
+
+  // Wire events
+  el.querySelector('#btn-nut-gerer').addEventListener('click',function(){openNutEditor(1);});
+  if(np){var vnp=el.querySelector('#btn-voir-np');if(vnp)vnp.addEventListener('click',function(){openNutEditor(np.id);});}
+  el.querySelector('#nsp-7j-'+clientId).addEventListener('click',function(){setNutSuiviPeriod(clientId,'7j',this);});
+  el.querySelector('#nsp-1j-'+clientId).addEventListener('click',function(){setNutSuiviPeriod(clientId,'1j',this);});
+  el.querySelector('#nut-nav-prev').addEventListener('click',function(){nutSuiviNav(clientId,-1);});
+  el.querySelector('#nut-nav-next').addEventListener('click',function(){nutSuiviNav(clientId,1);});
+}
+
+function renderTabSuivi(clientId){
+  var el=document.getElementById('tc-suivi');
+  if(!el)return;
+  var bilans=S.bilans.filter(function(b){return b.client_id===clientId;});
+  el.innerHTML=
+    '<div style="display:flex;gap:8px;margin-bottom:16px;">'+
+      '<button class="fb active" id="suivi-btn-bilans">Bilans</button>'+
+      '<button class="fb" id="suivi-btn-habitudes">Habitudes</button>'+
+    '</div>'+
+    '<div id="suivi-cli-content-'+clientId+'">'+renderBilansHtml(bilans)+'</div>';
+  el.querySelector('#suivi-btn-bilans').addEventListener('click',function(){
+    el.querySelectorAll('.fb').forEach(function(b){b.classList.remove('active');});
+    this.classList.add('active');
+    document.getElementById('suivi-cli-content-'+clientId).innerHTML=renderBilansHtml(S.bilans.filter(function(b){return b.client_id===clientId;}));
+  });
+  el.querySelector('#suivi-btn-habitudes').addEventListener('click',function(){
+    el.querySelectorAll('.fb').forEach(function(b){b.classList.remove('active');});
+    this.classList.add('active');
+    document.getElementById('suivi-cli-content-'+clientId).innerHTML=S.habitudes.map(function(h){
+      return '<div class="habit-i">'+
+        '<div class="hck '+(h.done?'done':'')+'" onclick="tglHabit('+h.id+')">'+(h.done?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':'')+' </div>'+
+        '<span style="font-size:13px;font-weight:500;flex:1;">'+h.nom+'</span>'+
+        '<span style="font-size:11px;color:var(--txt3);">🔥 '+h.streak+'j</span>'+
+      '</div>';
+    }).join('')||'<div class="empty-s"><p>Aucune habitude.</p></div>';
+  });
+}
+
+function renderBilansHtml(bilans){
+  if(!bilans.length)return '<div class="empty-s"><p>Aucun bilan.</p></div>';
+  return bilans.map(function(b){
+    return '<div class="bilan-c">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;">'+
+        '<div><div class="bilan-t">'+b.nom+'</div><div class="bilan-m">'+b.type+' — '+b.date+'</div></div>'+
+        '<span class="badge br2">À valider</span>'+
+      '</div>'+
+      (b.notes?'<div style="font-size:12px;color:var(--txt3);margin-top:8px;padding-top:8px;border-top:1px solid var(--brd);">'+b.notes+'</div>':'')+
+    '</div>';
+  }).join('');
+}
+
+function renderTabStats(clientId){
+  var c=S.clients.find(function(x){return x.id===clientId;});
+  var el=document.getElementById('tc-stats');
+  if(!el||!c)return;
+  var periods=['1S','2S','4S','6S','8S','10S','12S'];
+  var charts=[
+    {k:'poids',c:'var(--red-br)',l:'⚖️ Poids (kg)'},
+    {k:'cal',c:'#e67e22',l:'🔥 Calories'},
+    {k:'pas',c:'#3498db',l:'👟 Pas / jour'},
+    {k:'sommeil',c:'#9b59b6',l:'😴 Sommeil (h)'},
+    {k:'hydra',c:'#1abc9c',l:'💧 Hydratation (L)'}
+  ];
+  var statCards=[
+    {id:'stat-poids-val-'+clientId,lbl:'⚖️ POIDS',val:c.poids+' kg',type:'poids'},
+    {id:'stat-pas-val-'+clientId,lbl:'👟 PAS / JOUR',val:'—',type:'pas'},
+    {id:'stat-sommeil-val-'+clientId,lbl:'😴 SOMMEIL',val:'—',type:'sommeil'},
+    {id:'stat-hydra-val-'+clientId,lbl:'💧 HYDRATATION',val:'—',type:'hydratation'}
+  ];
+
+  el.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">'+
+      '<div style="font-size:14px;font-weight:600;">Données de suivi</div>'+
+      '<div style="display:flex;gap:4px;" id="stat-period-btns-'+clientId+'">'+
+        periods.map(function(p,i){
+          var a=i===3;
+          return '<button class="stat-period-btn" data-period="'+p+'" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid '+(a?'var(--red)':'var(--brd)')+';background:'+(a?'var(--red)':'transparent')+';color:'+(a?'#fff':'var(--txt3)')+';cursor:pointer;font-family:DM Sans,sans-serif;">'+p+'</button>';
+        }).join('')+
+      '</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">'+
+      statCards.map(function(sc){
+        return '<div class="sc" style="padding:14px;cursor:pointer;" data-stat-type="'+sc.type+'">'+
+          '<div class="sc-lbl">'+sc.lbl+'</div>'+
+          '<div class="sc-val" id="'+sc.id+'">'+sc.val+'</div>'+
+        '</div>';
+      }).join('')+
+    '</div>'+
+    '<div class="ig">'+
+      charts.map(function(ch){
+        return '<div class="card" style="padding:16px;">'+
+          '<div style="font-size:11px;font-weight:600;color:'+ch.c+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">'+ch.l+'</div>'+
+          '<div id="cli-chart-'+ch.k+'-'+clientId+'" style="height:90px;"></div>'+
+        '</div>';
+      }).join('')+
+    '</div>'+
+    '<div data-cli-stats="'+clientId+'" style="display:none;"></div>';
+
+  // Wire period buttons
+  el.querySelectorAll('.stat-period-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){setStatPeriod_cli(this,this.dataset.period,clientId);});
+  });
+  // Wire stat cards
+  el.querySelectorAll('[data-stat-type]').forEach(function(card){
+    card.addEventListener('click',function(){openStatInput(clientId,this.dataset.statType);});
+  });
+}
+
+function renderTabCalendrier(clientId){
+  var el=document.getElementById('tc-calendrier-cli');
+  if(!el)return;
+  var typeLabels={seance:'🏋️ Séance',rdv:'📅 Rendez-vous',bilan:'📋 Bilan',note:'📝 Note',objectif:'🎯 Objectif'};
+  el.innerHTML=
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">'+
+      '<div style="display:flex;align-items:center;gap:6px;">'+
+        '<button class="fb" id="cal-prev-'+clientId+'" style="padding:6px 10px;">←</button>'+
+        '<span style="font-size:14px;font-weight:600;min-width:140px;text-align:center;" id="cal-month-lbl-'+clientId+'"></span>'+
+        '<button class="fb" id="cal-next-'+clientId+'" style="padding:6px 10px;">→</button>'+
+        '<button class="fb" id="cal-today-'+clientId+'" style="padding:6px 12px;font-size:11px;">Aujourd&#39;hui</button>'+
+      '</div>'+
+      '<div style="display:flex;gap:4px;margin-left:auto;">'+
+        '<button class="fb active" id="cal-view-week-'+clientId+'" style="font-size:11px;padding:5px 12px;">Semaine</button>'+
+        '<button class="fb" id="cal-view-month-'+clientId+'" style="font-size:11px;padding:5px 12px;">Mois</button>'+
+      '</div>'+
+      '<div style="position:relative;">'+
+        '<button class="btn btn-p" id="cal-add-btn-'+clientId+'" style="font-size:12px;">+ Ajouter ▼</button>'+
+        '<div id="cal-add-menu-'+clientId+'" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--bg-card);border:1px solid var(--brd);border-radius:var(--r);width:180px;z-index:100;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.4);">'+
+          Object.entries(typeLabels).map(function(e,i){
+            return '<div class="cal-menu-item" data-type="'+e[0]+'" style="padding:10px 14px;cursor:pointer;font-size:13px;">'+e[1]+'</div>';
+          }).join('')+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div id="cal-view-semaine-'+clientId+'"><div id="cli-cal-week-'+clientId+'"></div></div>'+
+    '<div id="cal-view-mois-'+clientId+'" style="display:none;"><div class="cal-g" id="cli-cal-grid-'+clientId+'"></div></div>'+
+    '<div data-render-cal="'+clientId+'" style="display:none;"></div>';
+
+  // Wire events
+  el.querySelector('#cal-prev-'+clientId).addEventListener('click',function(){clientCalNav(clientId,-1);});
+  el.querySelector('#cal-next-'+clientId).addEventListener('click',function(){clientCalNav(clientId,1);});
+  el.querySelector('#cal-today-'+clientId).addEventListener('click',function(){clientCalGoToday(clientId);});
+  el.querySelector('#cal-view-week-'+clientId).addEventListener('click',function(){setCalView(clientId,'week',this);});
+  el.querySelector('#cal-view-month-'+clientId).addEventListener('click',function(){setCalView(clientId,'month',this);});
+  el.querySelector('#cal-add-btn-'+clientId).addEventListener('click',function(){toggleCalAddMenu(clientId);});
+  el.querySelectorAll('.cal-menu-item').forEach(function(item){
+    item.addEventListener('click',function(){openCalAddModal(clientId,this.dataset.type);});
+  });
+}
+
+function renderTabCourbes(clientId){
+  var el=document.getElementById('tc-poids-cli');
+  if(!el)return;
+  var periods=['1S','2S','4S','8S','12S','6M'];
+  var metrics=[
+    {t:'poids',e:'⚖️',l:'Poids'},
+    {t:'calories',e:'🔥',l:'Calories'},
+    {t:'pas',e:'👟',l:'Pas'},
+    {t:'sommeil',e:'😴',l:'Sommeil'},
+    {t:'hydratation',e:'💧',l:'Hydratation'}
+  ];
+  var miniCharts=[
+    {k:'poids',c:'var(--red-br)',l:'⚖️ Poids'},
+    {k:'calories',c:'#e67e22',l:'🔥 Calories'},
+    {k:'pas',c:'#3498db',l:'👟 Pas'},
+    {k:'sommeil',c:'#9b59b6',l:'😴 Sommeil'}
+  ];
+
+  el.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">'+
+      '<div><div style="font-size:16px;font-weight:700;font-family:Montserrat,sans-serif;">Courbes de progression</div></div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;" id="courbe-period-btns-'+clientId+'">'+
+        periods.map(function(p,i){
+          var a=i===2;
+          return '<button class="stat-period-btn" data-period="'+p+'" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid '+(a?'var(--red)':'var(--brd)')+';background:'+(a?'var(--red)':'transparent')+';color:'+(a?'#fff':'var(--txt3)')+';cursor:pointer;font-family:DM Sans,sans-serif;">'+p+'</button>';
+        }).join('')+
+      '</div>'+
+    '</div>'+
+    '<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;" id="courbe-metrics-'+clientId+'">'+
+      metrics.map(function(m,i){
+        var a=i===0;
+        return '<button class="courbe-metric-btn" data-metric="'+m.t+'" style="padding:6px 14px;border-radius:20px;border:1px solid '+(a?'var(--red)':'var(--brd)')+';background:'+(a?'var(--red-gl)':'transparent')+';color:'+(a?'var(--red-br)':'var(--txt3)')+';font-size:12px;font-weight:600;cursor:pointer;font-family:DM Sans,sans-serif;">'+m.e+' '+m.l+'</button>';
+      }).join('')+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">'+
+      ['ACTUEL','MINIMUM','MAXIMUM','ÉVOLUTION'].map(function(lbl,i){
+        return '<div class="sc" style="padding:14px;text-align:center;">'+
+          '<div class="sc-lbl" id="courbe-card-lbl-'+(i+1)+'-'+clientId+'">'+lbl+'</div>'+
+          '<div class="sc-val" style="font-size:22px;" id="courbe-card-val-'+(i+1)+'-'+clientId+'">—</div>'+
+        '</div>';
+      }).join('')+
+    '</div>'+
+    '<div class="card" style="padding:20px;margin-bottom:16px;">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">'+
+        '<div style="font-size:13px;font-weight:600;" id="courbe-chart-title-'+clientId+'">Évolution — Poids (kg)</div>'+
+        '<button class="btn" id="courbe-saisir-btn-'+clientId+'" style="font-size:11px;">+ Saisir</button>'+
+      '</div>'+
+      '<div id="courbe-main-chart-'+clientId+'" style="height:200px;"></div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">'+
+      miniCharts.map(function(m){
+        return '<div class="card" style="padding:16px;">'+
+          '<div style="font-size:11px;font-weight:600;color:'+m.c+';text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">'+m.l+'</div>'+
+          '<div id="courbe-mini-'+m.k+'-'+clientId+'" style="height:80px;"></div>'+
+        '</div>';
+      }).join('')+
+    '</div>'+
+    '<div data-courbe="'+clientId+'" style="display:none;"></div>';
+
+  // Wire events
+  el.querySelectorAll('#courbe-period-btns-'+clientId+' .stat-period-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){setCourbePeriod(clientId,this.dataset.period,this);});
+  });
+  el.querySelectorAll('#courbe-metrics-'+clientId+' .courbe-metric-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){setCourbeMetric(clientId,this.dataset.metric,this);});
+  });
+  el.querySelector('#courbe-saisir-btn-'+clientId).addEventListener('click',function(){openStatInput(clientId,'poids');});
+}
+
+function renderTabCorps(clientId){
+  var el=document.getElementById('tc-corps-cli');
+  if(!el)return;
+  el.innerHTML='<div id="corps-container-'+clientId+'"></div><div data-corps="'+clientId+'" style="display:none;"></div>';
+}
+
+function switchSuiviCli(tab,btn,clientId){
+  if(btn)btn.closest('div').querySelectorAll('.fb').forEach(function(b){b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  var el=document.getElementById('suivi-cli-content-'+clientId);
+  if(!el)return;
+  if(tab==='bilans'){
+    el.innerHTML=renderBilansHtml(S.bilans.filter(function(b){return b.client_id===clientId;}));
+  }else{
+    el.innerHTML=S.habitudes.map(function(h){
+      return '<div class="habit-i"><div class="hck '+(h.done?'done':'')+'" onclick="tglHabit('+h.id+')">'+(h.done?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':'')+' </div><span style="font-size:13px;font-weight:500;flex:1;">'+h.nom+'</span><span style="font-size:11px;color:var(--txt3);">🔥 '+h.streak+'j</span></div>';
+    }).join('')||'<div class="empty-s"><p>Aucune habitude.</p></div>';
+  }
+}
+
 
 function switchTab(t,el){
   S.cur.tab=t;
@@ -4345,23 +4369,13 @@ function renderCorps(clientId) {
       })
     : genSeries(poidsInit, poidsFin, 0.3);
 
-  // Sync avec vraies données clientStats
-  const calData = (stats.calories  || []).sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const pasData = (stats.pas       || []).sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const somData = (stats.sommeil   || []).sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const interpSer = (arr, fbS, fbE, noise, isInt) => {
-    if (arr.length >= 2) return Array.from({length:weeks}, (_,i) => {
-      const idx = Math.round(i/(weeks-1)*(arr.length-1));
-      return arr[idx]?.val ?? fbS;
-    });
-    return genSeries(fbS, fbE, noise).map(v => isInt ? Math.round(v) : +v.toFixed(1));
-  };
-  const calInit = calData[0]?.val||1600, calEnd = calData[calData.length-1]?.val||2100;
-  const pasInit = pasData[0]?.val||5800, pasEnd = pasData[pasData.length-1]?.val||10200;
-  const somInit = somData[0]?.val||6.1,  somEnd = somData[somData.length-1]?.val||7.8;
-  const serCal  = interpSer(calData, calInit, calEnd, 80, true);
-  const serPas  = interpSer(pasData, pasInit, pasEnd, 400, true);
-  const serSom  = interpSer(somData, somInit, somEnd, 0.25, false);
+  const calInit = 1600, calEnd = 2100;
+  const pasInit = 5800, pasEnd = 10200;
+  const somInit = 6.1,  somEnd = 7.8;
+
+  const serCal  = genSeries(calInit, calEnd, 80);
+  const serPas  = genSeries(pasInit, pasEnd, 400).map(v => Math.round(v));
+  const serSom  = genSeries(somInit, somEnd, 0.25);
 
   const labels = Array.from({length:weeks}, (_,i) => 'S'+(i+1));
   const cid = clientId;
@@ -4568,143 +4582,41 @@ function corpsUpdateAll(cid, pct) {
 function corpsDrawAvatar(cid, ep, poids) {
   const svg = document.getElementById('ca-svg-'+cid);
   if (!svg) return;
-  const c = window.S?.clients?.find(x=>x.id===cid);
-  const savedGenre = window.corpsGenreState?.[cid];
-  const genre = savedGenre || c?.genre?.toLowerCase() || 'homme';
-  const isFemme = genre.includes('f');
+  const cx=90, skin='#c8956c', skinDark='#a67750';
+  const waist = 46-ep*9;
+  const shoulder = 44+ep*7;
+  const armW = 11+ep*5;
+  const legW = 14+ep*4;
+  const d = ep;
 
-  // Palette anatomique flat gris — style images de référence
-  const BG   = '#16161a';
-  const BODY = '#5a5a65';
-  const MID  = '#6e6e7a';
-  const LN   = '#9a9aaa';
-  const HEAD = '#72727e';
-  const HAIR = '#4a4a55';
-  const m = Math.min(1, ep);
-
-  if (isFemme) {
-    svg.setAttribute('viewBox','0 0 180 310');
-    svg.innerHTML = [
-      '<rect width="180" height="310" rx="14" fill="'+BG+'"/>',
-      '<path d="M68,200 Q58,212 57,238 Q56,255 60,268 L74,268 Q76,255 75,235 Q76,218 78,200Z" fill="'+BODY+'"/>',
-      '<path d="M64,210 Q60,228 61,248 Q62,258 65,264 L70,264 Q69,250 70,232 Q71,220 72,210Z" fill="'+MID+'" opacity="'+(0.3+m*0.5)+'"/>',
-      '<path d="M112,200 Q122,212 123,238 Q124,255 120,268 L106,268 Q104,255 105,235 Q104,218 102,200Z" fill="'+BODY+'"/>',
-      '<path d="M116,210 Q120,228 119,248 Q118,258 115,264 L110,264 Q111,250 110,232 Q109,220 108,210Z" fill="'+MID+'" opacity="'+(0.3+m*0.5)+'"/>',
-      '<path d="M59,268 Q56,282 57,300 Q58,310 62,314 L73,314 Q75,310 74,300 Q73,284 74,268Z" fill="'+BODY+'"/>',
-      '<ellipse cx="66" cy="287" rx="5" ry="9" fill="'+MID+'" opacity="'+(0.25+m*0.45)+'"/>',
-      '<path d="M121,268 Q124,282 123,300 Q122,310 118,314 L107,314 Q105,310 106,300 Q107,284 106,268Z" fill="'+BODY+'"/>',
-      '<ellipse cx="114" cy="287" rx="5" ry="9" fill="'+MID+'" opacity="'+(0.25+m*0.45)+'"/>',
-      '<ellipse cx="66" cy="318" rx="10" ry="4" fill="'+MID+'"/>',
-      '<ellipse cx="114" cy="318" rx="10" ry="4" fill="'+MID+'"/>',
-      '<path d="M60,188 Q52,200 56,216 L74,216 L74,188Z" fill="'+MID+'" opacity="0.55"/>',
-      '<path d="M120,188 Q128,200 124,216 L106,216 L106,188Z" fill="'+MID+'" opacity="0.55"/>',
-      '<path d="M74,188 L106,188 L104,216 L76,216Z" fill="'+BODY+'" opacity="0.9"/>',
-      '<path d="M72,118 Q60,130 58,152 Q56,170 60,190 Q64,206 74,212 L106,212 Q116,206 120,190 Q124,170 122,152 Q120,130 108,118Z" fill="'+BODY+'"/>',
-      '<path d="M58,158 Q66,162 72,161" stroke="'+LN+'" stroke-width="1" fill="none" opacity="'+(0.2+m*0.5)+'"/>',
-      '<path d="M122,158 Q114,162 108,161" stroke="'+LN+'" stroke-width="1" fill="none" opacity="'+(0.2+m*0.5)+'"/>',
-      '<line x1="90" y1="158" x2="90" y2="206" stroke="'+LN+'" stroke-width="0.8" opacity="'+(m*0.45)+'"/>',
-      '<line x1="82" y1="170" x2="98" y2="170" stroke="'+LN+'" stroke-width="0.7" opacity="'+(m*0.38)+'"/>',
-      '<line x1="80" y1="184" x2="100" y2="184" stroke="'+LN+'" stroke-width="0.7" opacity="'+(m*0.32)+'"/>',
-      '<ellipse cx="77" cy="136" rx="'+(7+m*1)+'" ry="'+(6+m*1.5)+'" fill="'+MID+'" opacity="0.75"/>',
-      '<ellipse cx="103" cy="136" rx="'+(7+m*1)+'" ry="'+(6+m*1.5)+'" fill="'+MID+'" opacity="0.75"/>',
-      '<line x1="90" y1="118" x2="90" y2="142" stroke="'+LN+'" stroke-width="0.8" opacity="'+(0.3+m*0.3)+'"/>',
-      '<ellipse cx="66" cy="116" rx="10" ry="8" fill="'+MID+'" opacity="0.9"/>',
-      '<ellipse cx="114" cy="116" rx="10" ry="8" fill="'+MID+'" opacity="0.9"/>',
-      '<path d="M58,116 Q46,122 44,140 Q43,152 46,160 L58,158 Q60,150 60,136 Q61,124 64,116Z" fill="'+BODY+'"/>',
-      '<ellipse cx="51" cy="136" rx="5" ry="9" fill="'+MID+'" opacity="'+(0.28+m*0.45)+'"/>',
-      '<path d="M44,160 Q42,172 43,188 Q44,196 47,200 L57,198 Q59,192 58,182 Q57,170 57,158Z" fill="'+BODY+'"/>',
-      '<ellipse cx="49" cy="204" rx="6" ry="7" fill="'+MID+'"/>',
-      '<line x1="46" y1="208" x2="45" y2="216" stroke="'+MID+'" stroke-width="2" stroke-linecap="round"/>',
-      '<line x1="49" y1="210" x2="49" y2="218" stroke="'+MID+'" stroke-width="2" stroke-linecap="round"/>',
-      '<line x1="52" y1="209" x2="53" y2="217" stroke="'+MID+'" stroke-width="2" stroke-linecap="round"/>',
-      '<path d="M122,116 Q134,122 136,140 Q137,152 134,160 L122,158 Q120,150 120,136 Q119,124 116,116Z" fill="'+BODY+'"/>',
-      '<ellipse cx="129" cy="136" rx="5" ry="9" fill="'+MID+'" opacity="'+(0.28+m*0.45)+'"/>',
-      '<path d="M136,160 Q138,172 137,188 Q136,196 133,200 L123,198 Q121,192 122,182 Q123,170 123,158Z" fill="'+BODY+'"/>',
-      '<ellipse cx="131" cy="204" rx="6" ry="7" fill="'+MID+'"/>',
-      '<line x1="134" y1="208" x2="135" y2="216" stroke="'+MID+'" stroke-width="2" stroke-linecap="round"/>',
-      '<line x1="131" y1="210" x2="131" y2="218" stroke="'+MID+'" stroke-width="2" stroke-linecap="round"/>',
-      '<line x1="128" y1="209" x2="127" y2="217" stroke="'+MID+'" stroke-width="2" stroke-linecap="round"/>',
-      '<rect x="83" y="96" width="14" rx="4" height="22" fill="'+BODY+'"/>',
-      '<line x1="90" y1="98" x2="90" y2="114" stroke="'+LN+'" stroke-width="0.7" opacity="0.35"/>',
-      '<ellipse cx="90" cy="76" rx="20" ry="22" fill="'+HEAD+'"/>',
-      '<ellipse cx="83" cy="74" rx="4" ry="5" fill="'+BG+'" opacity="0.85"/>',
-      '<ellipse cx="97" cy="74" rx="4" ry="5" fill="'+BG+'" opacity="0.85"/>',
-      '<ellipse cx="83" cy="73" rx="2.2" ry="2.8" fill="'+LN+'" opacity="0.95"/>',
-      '<ellipse cx="97" cy="73" rx="2.2" ry="2.8" fill="'+LN+'" opacity="0.95"/>',
-      '<path d="M86,85 Q90,89 94,85" stroke="'+LN+'" stroke-width="1.2" fill="none" opacity="0.55"/>',
-      '<ellipse cx="90" cy="58" rx="22" ry="14" fill="'+HAIR+'"/>',
-      '<path d="M104,60 Q114,67 110,82 Q108,89 104,86" fill="'+HAIR+'"/>',
-      '<text x="90" y="306" text-anchor="middle" font-size="11" fill="'+LN+'" font-family="Montserrat,sans-serif" font-weight="700">'+poids.toFixed(1)+' kg</text>'
-    ].join('');
-  } else {
-    svg.setAttribute('viewBox','0 0 180 310');
-    svg.innerHTML = [
-      '<rect width="180" height="310" rx="14" fill="'+BG+'"/>',
-      '<path d="M64,205 Q54,218 53,244 Q52,262 57,274 L72,274 Q74,260 73,240 Q74,222 76,205Z" fill="'+BODY+'"/>',
-      '<path d="M59,215 Q55,234 56,254 Q57,264 60,270 L66,270 Q65,256 66,238 Q67,226 69,215Z" fill="'+MID+'" opacity="'+(0.32+m*0.48)+'"/>',
-      '<line x1="68" y1="215" x2="65" y2="272" stroke="'+LN+'" stroke-width="0.8" opacity="'+(m*0.4)+'"/>',
-      '<path d="M116,205 Q126,218 127,244 Q128,262 123,274 L108,274 Q106,260 107,240 Q106,222 104,205Z" fill="'+BODY+'"/>',
-      '<path d="M121,215 Q125,234 124,254 Q123,264 120,270 L114,270 Q115,256 114,238 Q113,226 111,215Z" fill="'+MID+'" opacity="'+(0.32+m*0.48)+'"/>',
-      '<line x1="112" y1="215" x2="115" y2="272" stroke="'+LN+'" stroke-width="0.8" opacity="'+(m*0.4)+'"/>',
-      '<path d="M55,274 Q52,290 53,310 Q54,320 58,324 L71,324 Q73,320 72,310 Q71,292 72,274Z" fill="'+BODY+'"/>',
-      '<ellipse cx="63" cy="294" rx="5.5" ry="11" fill="'+MID+'" opacity="'+(0.28+m*0.48)+'"/>',
-      '<path d="M125,274 Q128,290 127,310 Q126,320 122,324 L109,324 Q107,320 108,310 Q109,292 108,274Z" fill="'+BODY+'"/>',
-      '<ellipse cx="117" cy="294" rx="5.5" ry="11" fill="'+MID+'" opacity="'+(0.28+m*0.48)+'"/>',
-      '<ellipse cx="63" cy="328" rx="11" ry="4" fill="'+MID+'"/>',
-      '<ellipse cx="117" cy="328" rx="11" ry="4" fill="'+MID+'"/>',
-      '<path d="M68,195 Q60,206 63,220 L78,220 L78,195Z" fill="'+MID+'" opacity="0.5"/>',
-      '<path d="M112,195 Q120,206 117,220 L102,220 L102,195Z" fill="'+MID+'" opacity="0.5"/>',
-      '<path d="M78,195 L102,195 L100,220 L80,220Z" fill="'+BODY+'" opacity="0.9"/>',
-      '<path d="M66,112 Q53,124 51,148 Q49,168 55,192 Q60,210 70,218 L110,218 Q120,210 125,192 Q131,168 129,148 Q127,124 114,112Z" fill="'+BODY+'"/>',
-      '<path d="M'+(66-m*2)+',118 Q70,134 78,136 L90,136 Q90,118 84,112 Q74,108 '+(66-m*2)+',112Z" fill="'+MID+'" opacity="'+(0.38+m*0.42)+'"/>',
-      '<path d="M'+(114+m*2)+',118 Q110,134 102,136 L90,136 Q90,118 96,112 Q106,108 '+(114+m*2)+',112Z" fill="'+MID+'" opacity="'+(0.38+m*0.42)+'"/>',
-      '<line x1="90" y1="112" x2="90" y2="140" stroke="'+LN+'" stroke-width="1" opacity="'+(0.3+m*0.45)+'"/>',
-      '<path d="M'+(66-m)+',138 Q78,142 90,141 Q102,142 '+(114+m)+',138" stroke="'+LN+'" stroke-width="0.9" fill="none" opacity="'+(0.28+m*0.5)+'"/>',
-      '<line x1="90" y1="140" x2="90" y2="214" stroke="'+LN+'" stroke-width="1" opacity="'+(0.3+m*0.5)+'"/>',
-      '<line x1="'+(74+m)+'" y1="152" x2="'+(106-m)+'" y2="152" stroke="'+LN+'" stroke-width="0.9" opacity="'+(m*0.55)+'"/>',
-      '<line x1="'+(72+m)+'" y1="166" x2="'+(108-m)+'" y2="166" stroke="'+LN+'" stroke-width="0.9" opacity="'+(m*0.5)+'"/>',
-      '<line x1="'+(71+m)+'" y1="180" x2="'+(109-m)+'" y2="180" stroke="'+LN+'" stroke-width="0.8" opacity="'+(m*0.44)+'"/>',
-      '<line x1="'+(70+m)+'" y1="194" x2="'+(110-m)+'" y2="194" stroke="'+LN+'" stroke-width="0.7" opacity="'+(m*0.35)+'"/>',
-      '<path d="M'+(54-m*0.5)+',164 Q60,174 '+(72+m)+',186" stroke="'+LN+'" stroke-width="0.8" fill="none" opacity="'+(m*0.4)+'"/>',
-      '<path d="M'+(126+m*0.5)+',164 Q120,174 '+(108-m)+',186" stroke="'+LN+'" stroke-width="0.8" fill="none" opacity="'+(m*0.4)+'"/>',
-      '<ellipse cx="'+(60-m*2)+'" cy="108" rx="'+(12+m*3)+'" ry="'+(9+m*2)+'" fill="'+MID+'" opacity="0.92"/>',
-      '<ellipse cx="'+(120+m*2)+'" cy="108" rx="'+(12+m*3)+'" ry="'+(9+m*2)+'" fill="'+MID+'" opacity="0.92"/>',
-      '<path d="M'+(54-m*2)+',106 Q'+(56-m*2)+',116 '+(60-m)+',122" stroke="'+LN+'" stroke-width="0.9" fill="none" opacity="'+(0.28+m*0.42)+'"/>',
-      '<path d="M'+(126+m*2)+',106 Q'+(124+m*2)+',116 '+(120+m)+',122" stroke="'+LN+'" stroke-width="0.9" fill="none" opacity="'+(0.28+m*0.42)+'"/>',
-      '<path d="M'+(50-m*2)+',110 Q'+(37-m)+',118 '+(35-m)+',138 Q'+(33-m)+',152 '+(37-m)+',162 L'+(50-m)+',160 Q'+(52-m)+',150 '+(52-m)+',136 Q'+(53-m)+',122 '+(56-m)+',112Z" fill="'+BODY+'"/>',
-      '<ellipse cx="'+(43-m)+'" cy="136" rx="6" ry="'+(9+m*3)+'" fill="'+MID+'" opacity="'+(0.32+m*0.52)+'"/>',
-      '<path d="M'+(44-m)+',148 Q'+(41-m)+',158 '+(42-m)+',166 L'+(49-m)+',164 Q'+(50-m)+',156 '+(50-m)+',148Z" fill="'+MID+'" opacity="'+(m*0.42)+'"/>',
-      '<path d="M'+(36-m)+',162 Q'+(33-m)+',176 '+(34-m)+',196 Q'+(35-m)+',206 '+(38-m)+',210 L'+(50-m)+',208 Q'+(52-m)+',202 '+(51-m)+',192 Q'+(50-m)+',178 '+(50-m)+',160Z" fill="'+BODY+'"/>',
-      '<ellipse cx="'+(41-m)+'" cy="215" rx="7" ry="8" fill="'+MID+'"/>',
-      '<line x1="'+(38-m)+'" y1="220" x2="'+(36-m)+'" y2="230" stroke="'+MID+'" stroke-width="2.5" stroke-linecap="round"/>',
-      '<line x1="'+(41-m)+'" y1="222" x2="'+(40-m)+'" y2="232" stroke="'+MID+'" stroke-width="2.5" stroke-linecap="round"/>',
-      '<line x1="'+(44-m)+'" y1="221" x2="'+(44-m)+'" y2="231" stroke="'+MID+'" stroke-width="2.5" stroke-linecap="round"/>',
-      '<line x1="'+(47-m)+'" y1="218" x2="'+(48-m)+'" y2="227" stroke="'+MID+'" stroke-width="2.5" stroke-linecap="round"/>',
-      '<path d="M'+(130+m*2)+',110 Q'+(143+m)+',118 '+(145+m)+',138 Q'+(147+m)+',152 '+(143+m)+',162 L'+(130+m)+',160 Q'+(128+m)+',150 '+(128+m)+',136 Q'+(127+m)+',122 '+(124+m)+',112Z" fill="'+BODY+'"/>',
-      '<ellipse cx="'+(137+m)+'" cy="136" rx="6" ry="'+(9+m*3)+'" fill="'+MID+'" opacity="'+(0.32+m*0.52)+'"/>',
-      '<path d="M'+(136+m)+',148 Q'+(139+m)+',158 '+(138+m)+',166 L'+(131+m)+',164 Q'+(130+m)+',156 '+(130+m)+',148Z" fill="'+MID+'" opacity="'+(m*0.42)+'"/>',
-      '<path d="M'+(144+m)+',162 Q'+(147+m)+',176 '+(146+m)+',196 Q'+(145+m)+',206 '+(142+m)+',210 L'+(130+m)+',208 Q'+(128+m)+',202 '+(129+m)+',192 Q'+(130+m)+',178 '+(130+m)+',160Z" fill="'+BODY+'"/>',
-      '<ellipse cx="'+(139+m)+'" cy="215" rx="7" ry="8" fill="'+MID+'"/>',
-      '<line x1="'+(142+m)+'" y1="220" x2="'+(144+m)+'" y2="230" stroke="'+MID+'" stroke-width="2.5" stroke-linecap="round"/>',
-      '<line x1="'+(139+m)+'" y1="222" x2="'+(140+m)+'" y2="232" stroke="'+MID+'" stroke-width="2.5" stroke-linecap="round"/>',
-      '<line x1="'+(136+m)+'" y1="221" x2="'+(136+m)+'" y2="231" stroke="'+MID+'" stroke-width="2.5" stroke-linecap="round"/>',
-      '<line x1="'+(133+m)+'" y1="218" x2="'+(132+m)+'" y2="227" stroke="'+MID+'" stroke-width="2.5" stroke-linecap="round"/>',
-      '<rect x="83" y="94" width="14" rx="4" height="20" fill="'+BODY+'"/>',
-      '<line x1="90" y1="96" x2="90" y2="112" stroke="'+LN+'" stroke-width="0.8" opacity="0.35"/>',
-      '<path d="M66,112 Q76,108 90,106 Q104,108 114,112" stroke="'+LN+'" stroke-width="1" fill="none" opacity="'+(0.25+m*0.38)+'"/>',
-      '<ellipse cx="90" cy="72" rx="19" ry="21" fill="'+HEAD+'"/>',
-      '<path d="M72,80 Q71,92 76,102 Q83,110 90,110 Q97,110 104,102 Q109,92 108,80" fill="'+HEAD+'"/>',
-      '<ellipse cx="83" cy="70" rx="4" ry="5" fill="'+BG+'" opacity="0.85"/>',
-      '<ellipse cx="97" cy="70" rx="4" ry="5" fill="'+BG+'" opacity="0.85"/>',
-      '<ellipse cx="83" cy="69" rx="2.5" ry="3" fill="'+LN+'" opacity="0.95"/>',
-      '<ellipse cx="97" cy="69" rx="2.5" ry="3" fill="'+LN+'" opacity="0.95"/>',
-      '<path d="M86,82 Q90,86 94,82" stroke="'+LN+'" stroke-width="1.2" fill="none" opacity="0.5"/>',
-      '<ellipse cx="90" cy="56" rx="20" ry="13" fill="'+HAIR+'"/>',
-      '<path d="M71,64 Q70,56 90,53 Q110,56 109,64" fill="'+HAIR+'"/>',
-      '<text x="90" y="302" text-anchor="middle" font-size="11" fill="'+LN+'" font-family="Montserrat,sans-serif" font-weight="700">'+poids.toFixed(1)+' kg</text>'
-    ].join('');
-  }
+  svg.innerHTML = `
+    <ellipse cx="${cx}" cy="252" rx="30" ry="6" fill="rgba(0,0,0,0.3)"/>
+    <rect x="${cx-legW-2}" y="166" width="${legW}" rx="6" height="82" fill="${skin}"/>
+    <rect x="${cx+3}" y="166" width="${legW}" rx="6" height="82" fill="${skin}"/>
+    <ellipse cx="${cx-legW/2-1}" cy="248" rx="11" ry="5" fill="${skinDark}"/>
+    <ellipse cx="${cx+legW/2+4}" cy="248" rx="11" ry="5" fill="${skinDark}"/>
+    <ellipse cx="${cx-legW+3}" cy="205" rx="${2+d*3}" ry="${10+d*7}" fill="${skinDark}" opacity="${0.1+d*0.5}"/>
+    <ellipse cx="${cx+legW+2}" cy="205" rx="${2+d*3}" ry="${10+d*7}" fill="${skinDark}" opacity="${0.1+d*0.5}"/>
+    <path d="M${cx-shoulder/2},86 Q${cx-shoulder/2-5},122 ${cx-waist/2},146 Q${cx-waist/2*1.1},164 ${cx-legW},170 L${cx+legW+3},170 Q${cx+waist/2*1.1},164 ${cx+waist/2},146 Q${cx+shoulder/2+5},122 ${cx+shoulder/2},86 Z" fill="${skin}"/>
+    <ellipse cx="${cx-shoulder/6}" cy="104" rx="${shoulder/6}" ry="${7+d*9}" fill="${skinDark}" opacity="${0.15+d*0.55}"/>
+    <ellipse cx="${cx+shoulder/6}" cy="104" rx="${shoulder/6}" ry="${7+d*9}" fill="${skinDark}" opacity="${0.15+d*0.55}"/>
+    ${[0,1,2].map(i=>`<ellipse cx="${cx}" cy="${118+i*11}" rx="${3+d*5}" ry="${2+d*2}" fill="${skinDark}" opacity="${0.12+d*0.5*(1-i/4)}"/>`).join('')}
+    <rect x="${cx-shoulder/2-armW}" y="88" width="${armW}" rx="${armW/2}" height="${48+d*12}" fill="${skin}"/>
+    <rect x="${cx+shoulder/2}" y="88" width="${armW}" rx="${armW/2}" height="${48+d*12}" fill="${skin}"/>
+    <ellipse cx="${cx-shoulder/2-armW/2}" cy="${106+d*6}" rx="${armW/2}" ry="${6+d*8}" fill="${skinDark}" opacity="${0.18+d*0.55}"/>
+    <ellipse cx="${cx+shoulder/2+armW/2}" cy="${106+d*6}" rx="${armW/2}" ry="${6+d*8}" fill="${skinDark}" opacity="${0.18+d*0.55}"/>
+    <ellipse cx="${cx-shoulder/2-armW/2}" cy="${138+d*12}" rx="${armW/2+2}" ry="6" fill="${skinDark}"/>
+    <ellipse cx="${cx+shoulder/2+armW/2}" cy="${138+d*12}" rx="${armW/2+2}" ry="6" fill="${skinDark}"/>
+    <rect x="${cx-7}" y="66" width="14" rx="4" height="20" fill="${skin}"/>
+    <ellipse cx="${cx}" cy="50" rx="21" ry="21" fill="${skin}"/>
+    <ellipse cx="${cx-8}" cy="46" rx="3.5" ry="4" fill="${skinDark}" opacity="0.4"/>
+    <ellipse cx="${cx+8}" cy="46" rx="3.5" ry="4" fill="${skinDark}" opacity="0.4"/>
+    <path d="M${cx-5},${58} Q${cx},${64} ${cx+5},${58}" stroke="${skinDark}" stroke-width="1.5" fill="none" opacity="0.5"/>
+    <ellipse cx="${cx}" cy="32" rx="21" ry="17" fill="#4527a0"/>
+    <text x="${cx}" y="265" text-anchor="middle" font-size="10" fill="#666" font-family="system-ui">${poids} kg</text>
+  `;
 }
+
 function corpsOnSlider(cid, v) {
   const st = window._corpsState?.[cid];
   if (!st) return;
