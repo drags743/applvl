@@ -903,10 +903,10 @@ textarea.fi{resize:vertical;}
 
 <div class="toast" id="toast"><div class="td"></div><span id="toast-msg"></span></div>
 
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-import { getFirestore, doc, setDoc, getDoc, collection, getDocs, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
-
+<!-- Firebase SDK compat (works on GitHub Pages) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js" defer></script>
+<script defer>
 const FB_CONFIG = {
   apiKey: "AIzaSyDyfwclTjdWPhm80zDgZIHmW4phzK5gQis",
   authDomain: "applvl-799ab.firebaseapp.com",
@@ -916,91 +916,97 @@ const FB_CONFIG = {
   appId: "1:828362357474:web:1992b9646fff1eb89bbcbb"
 };
 
-const fbApp = initializeApp(FB_CONFIG);
-const db = getFirestore(fbApp);
+firebase.initializeApp(FB_CONFIG);
+const db = firebase.firestore();
 
 function setStatus(msg, color) {
   const el = document.getElementById('fb-status');
   if (el) { el.textContent = msg; el.style.color = color; }
 }
 
-async function fbSave(col, id, data) {
-  await setDoc(doc(db, col, String(id)), { ...data, _ts: serverTimestamp() });
-}
+window.fbSaveClient = async function(c) {
+  try { await db.collection('clients').doc(String(c.id)).set({...c, _ts: firebase.firestore.FieldValue.serverTimestamp()}); }
+  catch(e) { console.warn('fbSaveClient err', e); }
+};
 
-async function fbGet(col, id) {
-  const snap = await getDoc(doc(db, col, String(id)));
-  return snap.exists() ? snap.data() : null;
-}
+window.fbSavePrograms = async function() {
+  try { await db.collection('data').doc('programs').set({ list: window.S.programs, _ts: firebase.firestore.FieldValue.serverTimestamp() }); }
+  catch(e) { console.warn(e); }
+};
 
-async function fbGetAll(col) {
-  const snap = await getDocs(collection(db, col));
-  const out = [];
-  snap.forEach(d => out.push(d.data()));
-  return out;
-}
-
-// Expose to global scope so main script can call
-window.FB = { db, save: fbSave, get: fbGet, getAll: fbGetAll };
-
-window.fbSaveClient = async (c) => { try { await fbSave('clients', c.id, c); } catch(e) { console.warn('fbSave err', e); } };
-window.fbSavePrograms = async () => { try { await fbSave('data', 'programs', { list: window.S.programs }); } catch(e) { console.warn(e); } };
-window.fbSaveStats = async (cid) => {
+window.fbSaveStats = async function(cid) {
   try {
     if (window.S && window.S.clientStats && window.S.clientStats[cid]) {
-      await fbSave('stats', cid, { data: window.S.clientStats[cid] });
+      await db.collection('stats').doc(String(cid)).set({ data: window.S.clientStats[cid], _ts: firebase.firestore.FieldValue.serverTimestamp() });
     }
   } catch(e) { console.warn(e); }
 };
-window.fbSaveNutPlans = async () => { try { await fbSave('data', 'nutrition', { list: window.S.nutPlans }); } catch(e) { console.warn(e); } };
+
+window.fbSaveNutPlans = async function() {
+  try { await db.collection('data').doc('nutrition').set({ list: window.S.nutPlans }); }
+  catch(e) { console.warn(e); }
+};
 
 window.fbLoad = async function() {
   setStatus('🔄 Sync...', '#f39c12');
   try {
-    const [clients, progs, nut] = await Promise.all([
-      fbGetAll('clients'),
-      fbGet('data', 'programs'),
-      fbGet('data', 'nutrition')
+    const [clientsSnap, progsSnap, nutSnap] = await Promise.all([
+      db.collection('clients').get(),
+      db.collection('data').doc('programs').get(),
+      db.collection('data').doc('nutrition').get()
     ]);
 
-    if (clients && clients.length > 0) {
-      window.S.clients = clients.map(c => { delete c._ts; return c; });
+    if (!clientsSnap.empty) {
+      window.S.clients = clientsSnap.docs.map(d => { const x=d.data(); delete x._ts; return x; });
     } else {
-      // First time: push demo data to Firebase
-      for (const c of window.S.clients) await fbSave('clients', c.id, c);
+      for (const c of window.S.clients) await window.fbSaveClient(c);
     }
 
-    if (progs && progs.list) {
-      window.S.programs = progs.list;
+    if (progsSnap.exists && progsSnap.data().list) {
+      window.S.programs = progsSnap.data().list;
     } else {
-      await fbSave('data', 'programs', { list: window.S.programs });
+      await window.fbSavePrograms();
     }
 
-    if (nut && nut.list) {
-      window.S.nutPlans = nut.list;
+    if (nutSnap.exists && nutSnap.data().list) {
+      window.S.nutPlans = nutSnap.data().list;
     } else {
-      await fbSave('data', 'nutrition', { list: window.S.nutPlans });
+      await window.fbSaveNutPlans();
     }
 
-    // Load stats for each client
     if (!window.S.clientStats) window.S.clientStats = {};
     for (const c of window.S.clients) {
-      const st = await fbGet('stats', c.id);
-      if (st && st.data) window.S.clientStats[c.id] = st.data;
+      try {
+        const st = await db.collection('stats').doc(String(c.id)).get();
+        if (st.exists && st.data().data) window.S.clientStats[c.id] = st.data().data;
+      } catch(e) {}
     }
 
     setStatus('🟢 Connecté', '#2ecc71');
     if (typeof renderDash === 'function') renderDash();
     if (typeof renderClients === 'function') renderClients();
-    console.log('Firebase loaded OK');
   } catch(e) {
     setStatus('🔴 Hors ligne', '#e74c3c');
     console.error('Firebase load error:', e);
   }
 };
 
-// Auto load after page ready
-window.addEventListener('load', () => setTimeout(window.fbLoad, 800));
+window.addEventListener('load', () => {
+  // Wait for Firebase SDK to be ready
+  let attempts = 0;
+  const tryInit = () => {
+    if (typeof firebase !== 'undefined') {
+      window.fbLoad();
+    } else if (attempts < 20) {
+      attempts++;
+      setTimeout(tryInit, 200);
+    } else {
+      const el = document.getElementById('fb-status');
+      if (el) { el.textContent = '🔴 Firebase indisponible'; el.style.color = '#e74c3c'; }
+    }
+  };
+  setTimeout(tryInit, 500);
+});
 </script>
 
 <script>
@@ -1977,10 +1983,26 @@ function openProgramEditor(pid) {
 }
 
 function edGoBack() {
-  // Reset editor completely before navigating back
   ED.progId = null;
   ED.seanceIdx = 0;
-  nav('sport');
+  // Hide editor
+  const edPg = document.getElementById('page-prog-editor');
+  if (edPg) edPg.style.cssText = 'display:none!important;position:static;';
+  // Restore UI
+  const sb = document.getElementById('sidebar');
+  const tb = document.querySelector('.topbar');
+  const main = document.getElementById('main');
+  if (sb) sb.style.display = '';
+  if (tb) tb.style.display = '';
+  if (main) { main.style.width = ''; main.style.maxWidth = ''; }
+  // Show sport page
+  document.querySelectorAll('.page').forEach(x => { x.classList.remove('active'); x.style.display = ''; });
+  document.querySelectorAll('.ni').forEach(x => x.classList.remove('active'));
+  const sportPage = document.getElementById('page-sport');
+  if (sportPage) { sportPage.classList.add('active'); sportPage.style.display = 'block'; }
+  document.querySelectorAll('.ni')[3]?.classList.add('active');
+  document.getElementById('tb-title').textContent = 'Sport — Programmes';
+  document.getElementById('tb-actions').innerHTML = '<button class="btn btn-p" onclick="restoreNav()">+ Ajouter un client</button>';
   renderProgs();
 }
 
