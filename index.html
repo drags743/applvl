@@ -4094,8 +4094,6 @@ function openNutDayDetail(clientId, dateStr) {
   toast('📊 ' + fmt + ' : ' + cals.val + ' kcal');
 }
 
-// Hook into switchTab to trigger nut suivi render
-const _origSwitchTab = switchTab;
 // ===== COURBES DE PROGRESSION =====
 const courbeState = {};
 
@@ -4311,10 +4309,7 @@ function drawCourbeBarChart(container, labels, vals, color, unit) {
 }
 
 // Hook into switchTab for courbes
-const _origSwitchTabCourbes = switchTab;
-function switchTab(t, el) {
-  _origSwitchTabCourbes(t, el);
-}
+
 
 // ===== CORPS (Avatar Evolution) =====
 
