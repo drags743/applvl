@@ -49,11 +49,14 @@
   --brd:rgba(255,255,255,.07); --brd2:rgba(255,255,255,.14);
   --green:#2ecc71; --blue:#3498db; --orange:#e67e22;
 }
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;overflow:hidden;}
-html,body{margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-*{box-sizing:border-box;}
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--txt);overscroll-behavior:none;-webkit-font-smoothing:antialiased;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;
+   -webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;
+   -webkit-touch-callout:none;}
+/* Allow text selection/input in form controls only */
+input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text;}
+
+html,body{margin:0;padding:0;height:auto;min-height:100%;overflow-x:hidden;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--txt);overscroll-behavior-y:contain;-webkit-font-smoothing:antialiased;}
 #app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;width:100%;max-width:480px;margin:0 auto;position:relative;background:var(--bg);}
 @media (min-width:481px){ #app{min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,.5);} }
 
@@ -354,7 +357,12 @@ const fbDb = firebase.firestore();
 <!-- ========== SPORT ========== -->
 <div class="screen" id="screen-sport">
   <div class="top-bar">
-    <div><h1>Entraînement</h1><div class="sub">Aujourd'hui</div></div>
+    <div><h1>Entraînement</h1><div class="sub" id="sport-sub">Aujourd'hui</div></div>
+    <div class="icons">
+      <button class="icon-btn" id="sport-view-toggle" onclick="toggleSportView()" aria-label="Changer de vue" title="Changer de vue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </button>
+    </div>
   </div>
 
   <div class="date-row" id="sport-dates"></div>
@@ -1386,16 +1394,46 @@ function buildWeightChart(hist){
 /* ======================================================================
    RENDER — SPORT
    ====================================================================== */
+// Sport view mode: 'day' (picker de jours) or 'week' (aperçu semaine + séances à venir)
+let sportViewMode = localStorage.getItem('applvl.sportView') || 'day';
+
+function toggleSportView(){
+  sportViewMode = (sportViewMode === 'day') ? 'week' : 'day';
+  localStorage.setItem('applvl.sportView', sportViewMode);
+  renderSport();
+  const btn = document.getElementById('sport-view-toggle');
+  if(btn) btn.style.color = sportViewMode === 'week' ? 'var(--red-br)' : 'var(--txt2)';
+  toast(sportViewMode === 'week' ? 'Vue semaine' : 'Vue jour');
+}
+
 function renderSport(){
   const c = currentClient;
+  if(!c) return;
   const today = new Date();
   const selected = selectedSportDate;
 
+  // Update subtitle based on mode
+  const subEl = document.getElementById('sport-sub');
+  if(subEl) subEl.textContent = sportViewMode === 'week' ? 'Vue semaine' : (sameDay(selected, today) ? 'Aujourd\u2019hui' : selected.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}));
+
+  // Update toggle color
+  const tgl = document.getElementById('sport-view-toggle');
+  if(tgl) tgl.style.color = sportViewMode === 'week' ? 'var(--red-br)' : 'var(--txt2)';
+
+  if(sportViewMode === 'week'){
+    renderSportWeek(c, today);
+  } else {
+    renderSportDay(c, today, selected);
+  }
+}
+
+function renderSportDay(c, today, selected){
   // Date row: 30 days back + 730 days forward (2 years)
   const dates = [];
   for(let i=-30; i<=730; i++) dates.push(addDays(today, i));
 
   const row = document.getElementById('sport-dates');
+  row.style.display = '';
   row.innerHTML = dates.map((d, idx) => {
     const isSelected = sameDay(d, selected);
     const isToday = sameDay(d, today);
@@ -1417,7 +1455,96 @@ function renderSport(){
 
   const sessionsEl = document.getElementById('sport-sessions');
   if(session){
-    sessionsEl.innerHTML = `
+    sessionsEl.innerHTML = buildSessionCard(session);
+  } else {
+    const isPast = selected < today && !sameDay(selected, today);
+    const label = isPast ? 'Pas de séance ce jour-là' : 'Pas de séance prévue';
+    sessionsEl.innerHTML = `<div class="card" style="text-align:center;padding:40px 20px;">
+      <div style="font-size:40px;margin-bottom:10px;">${isPast ? '📅' : '💤'}</div>
+      <div style="font-family:'Montserrat',sans-serif;font-size:15px;font-weight:700;">${label}</div>
+      <div style="font-size:12px;color:var(--txt3);margin-top:4px;">${selected.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>
+    </div>`;
+  }
+}
+
+function renderSportWeek(c, today){
+  // Hide the single-day date row; we'll render a full week grid instead
+  const row = document.getElementById('sport-dates');
+  row.style.display = 'none';
+
+  // Find Monday of the current week
+  const dayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
+  const diffToMonday = (dayOfWeek === 0) ? -6 : (1 - dayOfWeek);
+  const monday = addDays(today, diffToMonday);
+
+  const weekDays = Array.from({length: 7}, (_, i) => addDays(monday, i));
+  const demoSession = APP.sessions[c.id]; // only today has a demo session
+
+  const sessionsEl = document.getElementById('sport-sessions');
+  const weekLabel = `${monday.toLocaleDateString('fr-FR',{day:'numeric',month:'short'})} - ${weekDays[6].toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}`;
+
+  // Build week header
+  let html = `<div style="padding:0 16px 16px;">
+    <div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">Semaine · ${weekLabel}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
+      ${weekDays.map(d => {
+        const isToday = sameDay(d, today);
+        const hasSession = sameDay(d, today) && demoSession;
+        const dow = d.toLocaleDateString('fr-FR',{weekday:'narrow'}).toUpperCase();
+        return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:10px;background:${isToday?'var(--red)':'var(--card)'};border:1px solid ${isToday?'var(--red-br)':'var(--brd)'};">
+          <div style="font-size:10px;color:${isToday?'#fff':'var(--txt3)'};font-weight:700;">${dow}</div>
+          <div style="font-family:'Montserrat',sans-serif;font-size:16px;font-weight:800;color:${isToday?'#fff':'var(--txt)'};">${d.getDate()}</div>
+          <div style="width:6px;height:6px;border-radius:50%;background:${hasSession ? (isToday?'#fff':'var(--red-br)') : 'transparent'};margin-top:2px;"></div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  // Upcoming sessions section
+  html += `<div style="padding:0 20px 8px;font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Séances à venir</div>`;
+
+  // For now we only have the demo session today — future sessions will come from Firestore
+  const upcoming = [];
+  for(let i=0; i<14; i++){
+    const d = addDays(today, i);
+    if(i === 0 && demoSession){
+      upcoming.push({date:d, session:demoSession});
+    }
+    // Later: push Firestore-planned sessions for that day
+  }
+
+  if(upcoming.length === 0){
+    html += `<div style="padding:0 16px;"><div class="card" style="text-align:center;padding:30px 20px;">
+      <div style="font-size:36px;margin-bottom:8px;">📅</div>
+      <div style="font-family:'Montserrat',sans-serif;font-size:14px;font-weight:700;">Aucune séance à venir</div>
+      <div style="font-size:12px;color:var(--txt3);margin-top:4px;">Reviens bientôt</div>
+    </div></div>`;
+  } else {
+    html += `<div style="padding:0 16px;">`;
+    for(const item of upcoming){
+      const isToday = sameDay(item.date, today);
+      const dateLabel = isToday ? 'Aujourd\u2019hui' : item.date.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'short'});
+      html += `<div class="card" style="padding:14px 16px;margin-bottom:10px;cursor:pointer;" onclick="selectedSportDate=new Date('${item.date.toISOString()}');sportViewMode='day';localStorage.setItem('applvl.sportView','day');renderSport();">
+        <div class="between" style="margin-bottom:8px;">
+          <div style="font-size:10px;font-weight:700;color:var(--red-br);text-transform:uppercase;letter-spacing:.12em;">${dateLabel}</div>
+          <span class="tag tag-red" style="font-size:9px;">PROGRAMMÉE</span>
+        </div>
+        <div style="font-family:'Montserrat',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px;">${item.session.nom}</div>
+        <div style="font-size:11px;color:var(--txt2);">⏱ ${item.session.dureeTarget} min &nbsp;·&nbsp; 💪 ${item.session.exercises.length} exercices</div>
+        ${isToday ? `<button class="btn btn-p btn-block" style="margin-top:12px;padding:10px;font-size:12px;" onclick="event.stopPropagation();startSession()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Commencer maintenant
+        </button>` : ''}
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  sessionsEl.innerHTML = html;
+}
+
+function buildSessionCard(session){
+  return `
       <div class="card" style="padding:0;overflow:hidden;position:relative;">
         <div style="height:130px;background:linear-gradient(135deg,#2a0a0a 0%,#4a1a1a 50%,#1a0505 100%);position:relative;">
           <div style="position:absolute;top:12px;right:12px;"><span class="tag tag-red">PROGRAMMÉE</span></div>
@@ -1446,15 +1573,6 @@ function renderSport(){
           </div>
         </div>
       </div>`;
-  } else {
-    const isPast = selected < today && !sameDay(selected, today);
-    const label = isPast ? 'Pas de séance ce jour-là' : 'Pas de séance prévue';
-    sessionsEl.innerHTML = `<div class="card" style="text-align:center;padding:40px 20px;">
-      <div style="font-size:40px;margin-bottom:10px;">${isPast ? '📅' : '💤'}</div>
-      <div style="font-family:'Montserrat',sans-serif;font-size:15px;font-weight:700;">${label}</div>
-      <div style="font-size:12px;color:var(--txt3);margin-top:4px;">${selected.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>
-    </div>`;
-  }
 }
 
 function pickSportDate(offset){
