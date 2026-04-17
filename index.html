@@ -1751,6 +1751,8 @@ const S={
   cur:{clientId:null,tab:'overview',muscleFilter:'Tous',suiviTab:'bilans'},
   portal:{client:null,tab:'plan'},
 };
+// Expose S globally so the Firebase module can read/write the app state
+window.S = S;
 
 // ===== NAV =====
 function nav(p){
