@@ -251,7 +251,7 @@ const fbDb = firebase.firestore();
     <label>Email</label>
     <input type="text" id="login-email" placeholder="ton.email@exemple.com" required autocomplete="off" autocapitalize="off" inputmode="email">
     <label>Code d'accès</label>
-    <input type="text" id="login-code" placeholder="Ton code à 4 chiffres" required inputmode="numeric" pattern="[0-9]*" maxlength="4">
+    <input type="password" id="login-code" placeholder="Ton mot de passe" required autocomplete="current-password">
     <button type="submit" class="btn btn-p btn-block" style="margin-top:12px;padding:14px;font-size:14px;font-weight:700;">Me connecter</button>
   </form>
 
