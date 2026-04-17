@@ -2,6 +2,10 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<!-- Firebase SDKs — hoisted early so they finish loading before coach login -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0a0a0a">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -513,6 +517,21 @@ textarea.fi{resize:vertical;}
       logoutBtn.style.display = 'none';
     }
   }
+  // Wait up to N seconds for Firebase SDK + fbCoachSignIn to be ready
+  function waitForFirebase(maxMs){
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      const tick = () => {
+        if(typeof firebase !== 'undefined' && typeof window.fbCoachSignIn === 'function'){
+          resolve(); return;
+        }
+        if(Date.now() - start > maxMs){ reject(new Error('Firebase timeout')); return; }
+        setTimeout(tick, 120);
+      };
+      tick();
+    });
+  }
+
   window.coachLogin = async function(e){
     e.preventDefault();
     var id = document.getElementById('cag-id').value.trim();
@@ -527,21 +546,27 @@ textarea.fi{resize:vertical;}
       return false;
     }
 
+    const btn = e.target.querySelector('button[type=submit]');
+    if(btn){ btn.disabled = true; btn.textContent = 'Connexion…'; }
+
+    // Wait for Firebase SDK to load if it's not ready yet (up to 10s)
+    try {
+      await waitForFirebase(10000);
+    } catch(_){
+      err.textContent = 'Firebase prend trop de temps à charger. Rafraîchis la page.';
+      if(btn){ btn.disabled = false; btn.textContent = 'Me connecter'; }
+      return false;
+    }
+
     // Real Firebase Auth
     try {
-      if(typeof firebase === 'undefined' || typeof window.fbCoachSignIn !== 'function'){
-        err.textContent = 'Connexion à Firebase en cours, réessaie dans 2s.';
-        return false;
-      }
-      const btn = e.target.querySelector('button[type=submit]');
-      if(btn){ btn.disabled = true; btn.textContent = 'Connexion…'; }
       await window.fbCoachSignIn(id, pw);
       localStorage.setItem('applvl.coach.authed', 'yes');
       applyAuth();
     } catch(ex){
       console.warn('login err', ex);
       const code = ex.code || '';
-      if(code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found'){
+      if(code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found' || code === 'auth/invalid-login-credentials'){
         err.textContent = 'Email ou mot de passe incorrect';
       } else if(code === 'auth/too-many-requests'){
         err.textContent = 'Trop d\'essais. Attends 1 minute.';
@@ -550,7 +575,6 @@ textarea.fi{resize:vertical;}
       } else {
         err.textContent = ex.message || 'Erreur de connexion';
       }
-      const btn = e.target.querySelector('button[type=submit]');
       if(btn){ btn.disabled = false; btn.textContent = 'Me connecter'; }
     }
     return false;
@@ -1263,10 +1287,7 @@ textarea.fi{resize:vertical;}
 <div class="toast" id="toast"><div class="td"></div><span id="toast-msg"></span></div>
 
 <!-- Firebase SDK compat (works on GitHub Pages) -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js" defer></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js" defer></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js" defer></script>
-<script defer>
+<script>
 /* ============================================================
    FIREBASE COACH MODULE — auth + sync + realtime listeners
    ============================================================ */
