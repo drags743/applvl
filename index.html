@@ -1808,7 +1808,7 @@ function renderDash(){
   const vals=[300,350,200,400,450,450];
   const max=Math.max(...vals);
   document.getElementById('rev-chart').innerHTML=months.map((m,i)=>`<div class="rb-wrap"><div class="rb" style="height:${Math.round(vals[i]/max*70)}px" title="${vals[i]}€"></div><div class="rb-m">${m}</div></div>`).join('');
-  document.getElementById('dash-clients').innerHTML=S.clients.filter(c=>c.status==='active').slice(0,4).map((c,i)=>`<div class="cr" onclick="openCli(${c.id})"><div class="av" style="background:${ac(i)}22;color:${ac(i)}">${ini(c.prenom,c.nom)}</div><div class="ci"><div class="cn">${c.prenom} ${c.nom}</div><div class="cm">${c.objectif}</div></div><span class="badge ba">Actif</span></div>`).join('');
+  document.getElementById('dash-clients').innerHTML=S.clients.filter(c=>c.status==='active').slice(0,4).map((c,i)=>`<div class="cr" onclick="openCli('${c.id}')"><div class="av" style="background:${ac(i)}22;color:${ac(i)}">${ini(c.prenom,c.nom)}</div><div class="ci"><div class="cn">${c.prenom} ${c.nom}</div><div class="cm">${c.objectif}</div></div><span class="badge ba">Actif</span></div>`).join('');
   document.getElementById('planning-today').innerHTML=`<div style="font-size:12px;color:var(--txt3);text-align:center;padding:20px 0;">Aucune séance planifiée aujourd'hui.<br><a style="color:var(--red-br);cursor:pointer;font-size:12px;" onclick="nav('calendrier')">+ Ajouter →</a></div>`;
   document.getElementById('bilans-val').innerHTML=S.bilans.length?S.bilans.map(b=>{const cl=S.clients.find(c=>c.id===b.client_id);return`<div class="cr"><div class="av" style="background:var(--red-mt);color:var(--red-br);font-size:10px;">${cl?ini(cl.prenom,cl.nom):'?'}</div><div class="ci"><div class="cn">${cl?cl.prenom+' '+cl.nom:'Client'}</div><div class="cm">${b.nom}</div></div><span class="badge br2">À valider</span></div>`;}).join(''):`<div style="font-size:12px;color:var(--txt3);text-align:center;padding:20px 0;">Aucun bilan en attente.</div>`;
 }
@@ -1824,7 +1824,7 @@ function renderClients(){
 
 function cliItem(c,i){
   const active=S.cur.clientId===c.id;
-  return`<div class="cli ${active?'active':''}" onclick="openCli(${c.id})"><div class="av" style="width:30px;height:30px;font-size:11px;background:${ac(i)}22;color:${ac(i)}">${ini(c.prenom,c.nom)}</div><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.prenom} ${c.nom}</div></div><div class="sd ${c.status==='active'?'da':'db'}"></div></div>`;
+  return`<div class="cli ${active?'active':''}" onclick="openCli('${c.id}')"><div class="av" style="width:30px;height:30px;font-size:11px;background:${ac(i)}22;color:${ac(i)}">${ini(c.prenom,c.nom)}</div><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.prenom} ${c.nom}</div></div><div class="sd ${c.status==='active'?'da':'db'}"></div></div>`;
 }
 
 function filterClients(q){
@@ -1832,13 +1832,47 @@ function filterClients(q){
 }
 
 function openCli(id){
-  S.cur.clientId=id;S.cur.tab='overview';
-  nav('clients');
-  const c=S.clients.find(x=>x.id===id);
-  if(!c)return;
-  const progs=S.programs.filter(p=>p.client_id===id);
-  const np=S.nutPlans.find(n=>n.client_id===id);
-  document.getElementById('cl-detail').innerHTML=`
+  try {
+    // Normalize id for comparison: try both as-is and as-number
+    S.cur.clientId=id;S.cur.tab='overview';
+    nav('clients');
+    const c=S.clients.find(x=> x.id===id || String(x.id)===String(id));
+    if(!c){ console.warn('openCli: client not found', id); toast('Client introuvable'); return; }
+
+    // Apply safe defaults for fields that might be missing on Firestore-created clients
+    c.color = c.color || '#c0392b';
+    c.email = c.email || '—';
+    c.tel = c.tel || '—';
+    c.code = c.code || '';
+    c.objectif = c.objectif || 'Non défini';
+    c.niveau = c.niveau || 'Débutant';
+    c.status = c.status || 'active';
+    c.poids = typeof c.poids === 'number' ? c.poids : 70;
+    c.taille = typeof c.taille === 'number' ? c.taille : 170;
+    c.age = typeof c.age === 'number' ? c.age : 25;
+    c.genre = c.genre || 'Non renseigné';
+    c.type_corps = c.type_corps || 'Non renseigné';
+    c.kcal = typeof c.kcal === 'number' ? c.kcal : 2000;
+    c.prot = typeof c.prot === 'number' ? c.prot : 100;
+    c.gluc = typeof c.gluc === 'number' ? c.gluc : 200;
+    c.lip = typeof c.lip === 'number' ? c.lip : 70;
+    c.debut = c.debut || '';
+    c.fin = c.fin || '';
+    c.prenom = c.prenom || '?';
+    c.nom = c.nom || '?';
+
+    const progs=S.programs.filter(p=> p.client_id===c.id || String(p.client_id)===String(c.id));
+    const np=S.nutPlans.find(n=> n.client_id===c.id || String(n.client_id)===String(c.id));
+    openCliRender(c, progs, np);
+  } catch(e) {
+    console.error('openCli crashed:', e);
+    toast('Erreur: '+(e.message||e));
+  }
+}
+
+function openCliRender(c, progs, np){
+    document.getElementById('cl-detail').innerHTML=`
+    <div data-cid="${c.id}" style="display:none;"></div>
   <div class="cd-header">
     <div class="cd-top">
       <div class="av-lg" style="background:${c.color}22;color:${c.color}">${ini(c.prenom,c.nom)}</div>
