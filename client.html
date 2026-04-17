@@ -51,17 +51,24 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;}
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--txt);overscroll-behavior:none;}
-#app{display:flex;flex-direction:column;height:100vh;max-width:480px;margin:0 auto;position:relative;background:var(--bg);}
+html,body{margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+*{box-sizing:border-box;}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--txt);overscroll-behavior:none;-webkit-font-smoothing:antialiased;}
+#app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh;width:100%;max-width:480px;margin:0 auto;position:relative;background:var(--bg);}
+@media (min-width:481px){ #app{min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,.5);} }
 
-/* Screens */
-.screen{display:none;position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding-bottom:90px;-webkit-overflow-scrolling:touch;}
-.screen.active{display:block;}
-.screen-session{padding-bottom:100px;}
+/* Safe-area: pushes ALL screen content below the system status bar.
+   Using max() to guarantee a minimum 24px top padding even when the
+   browser does not provide a meaningful safe-area-inset-top value. */
+.screen{display:none;flex-direction:column;min-height:100%;padding-top:max(24px, env(safe-area-inset-top, 24px));padding-bottom:calc(86px + env(safe-area-inset-bottom,0));-webkit-overflow-scrolling:touch;}
+.screen.active{display:flex;}
+.screen-session{padding-bottom:calc(100px + env(safe-area-inset-bottom,0));}
+
+/* Screens — natural flow so page can scroll properly on mobile */
 .screen-full{padding-bottom:0;}
 
 /* Top bar */
-.top-bar{padding:14px 20px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.top-bar{padding:18px 20px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .top-bar h1{font-family:'Montserrat',sans-serif;font-size:24px;font-weight:800;letter-spacing:-.01em;line-height:1.15;}
 .top-bar .sub{font-size:13px;color:var(--txt3);margin-top:2px;}
 .top-bar .icons{display:flex;gap:8px;}
@@ -88,15 +95,16 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .fab:hover{background:var(--red-br);transform:scale(1.05);}
 
 /* Bottom nav */
-#bnav{position:absolute;bottom:0;left:0;right:0;height:66px;background:#0c0c0c;border-top:1px solid var(--brd);display:flex;z-index:10;padding-bottom:env(safe-area-inset-bottom,0);}
-.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--txt3);cursor:pointer;font-size:10px;font-weight:500;transition:.15s;background:none;border:none;font-family:inherit;}
-.bnav-item svg{width:22px;height:22px;}
+#bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);right:auto;width:100%;max-width:480px;min-height:70px;background:#0c0c0c;border-top:1px solid var(--brd);display:flex;z-index:10;padding-bottom:env(safe-area-inset-bottom,0);}
+.bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--txt3);cursor:pointer;font-size:10px;font-weight:600;transition:.15s;background:none;border:none;font-family:inherit;padding:10px 4px;min-height:60px;}
+.bnav-item svg{width:24px;height:24px;stroke-width:2;}
 .bnav-item.active{color:var(--red-br);}
+.bnav-item.active svg{stroke-width:2.4;}
 
 /* Date picker */
-.date-row{display:flex;gap:6px;padding:0 16px 16px;overflow-x:auto;scroll-snap-type:x mandatory;}
-.date-row::-webkit-scrollbar{height:0;}
-.day-pill{flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:8px 10px;min-width:44px;border-radius:12px;background:transparent;border:none;cursor:pointer;font-family:inherit;scroll-snap-align:center;}
+.date-row{display:flex;gap:6px;padding:0 16px 16px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.date-row::-webkit-scrollbar{display:none;height:0;width:0;}
+.day-pill{flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:8px 10px;min-width:48px;border-radius:12px;background:transparent;border:none;cursor:pointer;font-family:inherit;scroll-snap-align:center;}
 .day-pill .dow{font-size:10px;color:var(--txt3);font-weight:500;text-transform:uppercase;letter-spacing:.05em;}
 .day-pill .day{font-family:'Montserrat',sans-serif;font-size:18px;font-weight:700;color:var(--txt);margin-top:2px;}
 .day-pill.active{background:var(--red);}
