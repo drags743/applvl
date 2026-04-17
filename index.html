@@ -1382,6 +1382,7 @@ function attachClientCompletedListener(clientId){
     .collection('completed').orderBy('date', 'desc').limit(50)
     .onSnapshot(snap => {
       try {
+        if(!window.S) return;
         const arr = snap.docs.map(d => d.data());
         // Keep a per-client mirror on window.S for the UI to read
         if(!window.S.completedSessions) window.S.completedSessions = {};
@@ -1396,7 +1397,7 @@ function attachClientStatsListener(clientId){
   _unsubStats[key] = db.collection('clients').doc(key)
     .collection('stats').doc('current')
     .onSnapshot(snap => {
-      if(!snap.exists) return;
+      if(!snap.exists || !window.S) return;
       const data = snap.data();
       if(!window.S.clientStats) window.S.clientStats = {};
       window.S.clientStats[clientId] = data;
@@ -1492,9 +1493,25 @@ window.fbCreateStudent = async function(clientData, password){
 
 /* ====== LOAD (initial fetch + setup listeners) ====== */
 
+// Wait for window.S (app state) to be initialized by the main script
+function waitForAppState(maxMs){
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const tick = () => {
+      if(window.S && Array.isArray(window.S.clients)){ resolve(); return; }
+      if(Date.now() - start > maxMs){ reject(new Error('App state not ready')); return; }
+      setTimeout(tick, 120);
+    };
+    tick();
+  });
+}
+
 window.fbLoad = async function(){
   setStatus('🔄 Chargement...', '#f39c12');
   try {
+    // Wait until the main <script> that defines window.S has run
+    await waitForAppState(15000);
+
     // Programs
     const progsSnap = await db.collection('coach').doc('programs').get();
     if(progsSnap.exists && Array.isArray(progsSnap.data().list)){
