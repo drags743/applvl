@@ -6122,32 +6122,39 @@ loadExerciseLib(); // pre-load exercise library // pre-load exercise library // 
     btn.textContent = '🔬 Diag';
     btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;background:#c0392b;color:#fff;border:none;border-radius:50px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(192,57,43,.4);font-family:inherit;';
     btn.onclick = () => {
-      // Run nav('reglages') first
       let navError = null;
       try {
         if(typeof nav === 'function') nav('reglages');
       } catch(e){ navError = e.message; }
-      // Wait a tick then show state
       setTimeout(() => {
         const reglagesEl = document.getElementById('page-reglages');
-        const computed = reglagesEl ? window.getComputedStyle(reglagesEl) : null;
-        const info = {
-          'FAKE_STUDENTS_DATA': typeof FAKE_STUDENTS_DATA !== 'undefined' ? '✓ (' + FAKE_STUDENTS_DATA.clients.length + ' élèves)' : '❌',
-          'window.S': typeof window.S !== 'undefined' ? '✓ (' + (window.S.clients?.length || 0) + ' clients)' : '❌',
-          'loadFakeStudents': typeof loadFakeStudents === 'function' ? '✓' : '❌',
-          'page-reglages élément': reglagesEl ? '✓' : '❌',
-          'page-reglages.active': reglagesEl?.classList.contains('active') ? 'OUI' : 'NON',
-          'page-reglages display CSS': computed ? computed.display : 'N/A',
-          'page-reglages visibility': computed ? computed.visibility : 'N/A',
-          'page-reglages height': computed ? computed.height : 'N/A',
-          'page-reglages offsetHeight': reglagesEl ? reglagesEl.offsetHeight + 'px' : 'N/A',
-          'fake-students-btn visible': document.getElementById('fake-students-btn')?.offsetParent ? 'OUI' : 'NON',
-          'tb-title actuel': document.getElementById('tb-title')?.textContent || 'N/A',
-          'nav erreur': navError || 'aucune',
-          'Élèves démo chargés?': localStorage.getItem('applvl.fakeStudentsLoaded') === 'yes' ? 'oui' : 'non',
-        };
-        let msg = 'DIAGNOSTIC après nav(reglages):\n\n';
-        for(const k in info) msg += k + ': ' + info[k] + '\n';
+
+        // Walk ancestors and measure each
+        const ancestors = [];
+        let cur = reglagesEl;
+        while(cur && cur !== document.documentElement){
+          const cs = window.getComputedStyle(cur);
+          ancestors.push({
+            tag: cur.tagName.toLowerCase() + (cur.id?'#'+cur.id:'') + (cur.className && typeof cur.className === 'string' ? '.'+cur.className.split(' ').filter(Boolean).join('.') : ''),
+            offsetHeight: cur.offsetHeight,
+            display: cs.display,
+            overflow: cs.overflow,
+            position: cs.position,
+          });
+          cur = cur.parentElement;
+        }
+
+        let msg = 'DIAGNOSTIC ANCÊTRES:\n\n';
+        for(let i=0; i<ancestors.length; i++){
+          const a = ancestors[i];
+          msg += (i===0?'►':' '.repeat(i)) + a.tag.slice(0,50) + '\n';
+          msg += '   height='+a.offsetHeight+'px display='+a.display+' overflow='+a.overflow+'\n';
+        }
+        msg += '\n--- autres ---\n';
+        msg += 'body scrollHeight: '+document.body.scrollHeight+'\n';
+        msg += 'body clientHeight: '+document.body.clientHeight+'\n';
+        msg += 'window.innerHeight: '+window.innerHeight+'\n';
+        msg += 'nav erreur: '+(navError||'aucune');
         alert(msg);
       }, 100);
     };
