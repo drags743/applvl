@@ -1556,15 +1556,74 @@ function attachClientCompletedListener(clientId){
 function attachClientStatsListener(clientId){
   const key = String(clientId);
   if(_unsubStats[key]) return;
-  _unsubStats[key] = db.collection('clients').doc(key)
-    .collection('stats').doc('current')
+
+  // Accumulator on the client object so we can merge weights + dailyStats sources
+  if(!window._statsAcc) window._statsAcc = {};
+  window._statsAcc[key] = { weights: [], dailyStats: [] };
+
+  const rebuild = () => {
+    const acc = window._statsAcc[key];
+    if(!window.S.clientStats) window.S.clientStats = {};
+    const out = {
+      poids: acc.weights.map(w => ({ date: w.date || w.id, val: w.val ?? w.weight })).filter(x => x.val !== undefined).sort((a,b) => a.date.localeCompare(b.date)),
+      calories: [],
+      pas: [],
+      sommeil: [],
+      hydratation: [],
+      prot: [],
+      gluc: [],
+      lip: [],
+    };
+    acc.dailyStats.forEach(d => {
+      const dk = d.date || d.id;
+      ['calories','pas','sommeil','hydratation','prot','gluc','lip'].forEach(k => {
+        if(d[k] !== undefined) out[k].push({ date: dk, val: d[k] });
+      });
+    });
+    ['calories','pas','sommeil','hydratation','prot','gluc','lip'].forEach(k => {
+      out[k].sort((a,b) => a.date.localeCompare(b.date));
+    });
+    window.S.clientStats[clientId] = out;
+
+    // Refresh current view if this is the active client
+    try {
+      if(window.S.cur && String(window.S.cur.clientId) === key){
+        if(typeof renderCorps === 'function' && document.querySelector('.tab.active[onclick*="corps-cli"]')) renderCorps(clientId);
+        if(typeof renderCourbes === 'function' && document.querySelector('.tab.active[onclick*="poids-cli"]')) renderCourbes(clientId);
+        if(typeof drawCliStats === 'function' && document.querySelector('.tab.active[onclick*="stats"]')) drawCliStats(clientId, '4S');
+      }
+    } catch(e){}
+  };
+
+  // Subcollection: weights
+  const unsubW = db.collection('clients').doc(key).collection('weights')
+    .onSnapshot(snap => {
+      window._statsAcc[key].weights = snap.docs.map(d => ({id: d.id, ...d.data()}));
+      rebuild();
+    }, err => console.warn('weights listener err', err));
+
+  // Subcollection: dailyStats
+  const unsubD = db.collection('clients').doc(key).collection('dailyStats')
+    .onSnapshot(snap => {
+      window._statsAcc[key].dailyStats = snap.docs.map(d => ({id: d.id, ...d.data()}));
+      rebuild();
+    }, err => console.warn('dailyStats listener err', err));
+
+  // Legacy: stats/current doc (old schema, keeps backward compat)
+  const unsubS = db.collection('clients').doc(key).collection('stats').doc('current')
     .onSnapshot(snap => {
       if(!snap.exists || !window.S) return;
       const data = snap.data();
       if(!window.S.clientStats) window.S.clientStats = {};
-      window.S.clientStats[clientId] = data;
-      try { if(typeof renderCorps === 'function' && document.querySelector('.tab.active[onclick*="corps-cli"]')) renderCorps(clientId); } catch(e){}
+      // Only use legacy doc if we have nothing from subcollections yet
+      const existing = window.S.clientStats[clientId];
+      if(!existing || !existing.poids || existing.poids.length === 0){
+        window.S.clientStats[clientId] = data;
+        try { if(typeof renderCorps === 'function' && document.querySelector('.tab.active[onclick*="corps-cli"]')) renderCorps(clientId); } catch(e){}
+      }
     }, err => { console.warn('stats listener err', err); });
+
+  _unsubStats[key] = () => { try{unsubW();}catch(e){} try{unsubD();}catch(e){} try{unsubS();}catch(e){} };
 }
 
 /* ====== WRITE HELPERS ====== */
@@ -2628,7 +2687,8 @@ function switchTab(t,el){
       renderClientCalendar(+el.dataset.renderCal);
     });
     document.querySelectorAll('[data-cli-stats]').forEach(el=>{
-      drawCliStats(+el.dataset.cliStats, '4S');
+      const raw = el.dataset.cliStats;
+      drawCliStats(/^\d+$/.test(raw) ? +raw : raw, '4S');
     });
     document.querySelectorAll('[data-nut-suivi]').forEach(el=>{
       renderNutSuivi(+el.dataset.nutSuivi);
