@@ -911,6 +911,52 @@ textarea.fi{resize:vertical;}
       <div id="backup-log" style="margin-top:12px;font-size:11px;color:var(--txt3);"></div>
     </div>
 
+    <!-- JSON IMPORT PER STUDENT -->
+    <div class="card" style="padding:18px;margin-bottom:16px;">
+      <div style="font-family:'Montserrat',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px;">📥 Importer un JSON pour un élève</div>
+      <div style="font-size:12px;color:var(--txt3);margin-bottom:14px;line-height:1.5;">
+        Importe un fichier JSON d'historique complet (poids, calories, pas, sommeil, hydratation, séances) pour <strong>un élève spécifique</strong>. Idéal pour générer tes propres faux élèves hors ligne puis les injecter. Les données vont direct dans Firebase et apparaissent des deux côtés (coach + app client).
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Élève cible</label>
+          <select id="json-imp-target" class="fs" style="width:100%;">
+            <option value="">— Choisir un élève —</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Options</label>
+          <div style="display:flex;flex-direction:column;gap:4px;padding-top:4px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;">
+              <input type="checkbox" id="json-imp-shift" checked> Recaler pour finir aujourd'hui
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;">
+              <input type="checkbox" id="json-imp-profile" checked> Copier aussi le profil
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-p" onclick="document.getElementById('json-imp-file').click()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Choisir le fichier JSON
+        </button>
+        <button class="btn" onclick="downloadJsonTemplate()">
+          📄 Télécharger le template JSON
+        </button>
+        <input type="file" id="json-imp-file" accept=".json,application/json" style="display:none;" onchange="handleJsonStudentImport(event)">
+      </div>
+
+      <div id="json-imp-progress" style="margin-top:12px;display:none;">
+        <div style="font-size:11px;color:var(--txt3);margin-bottom:4px;" id="json-imp-progress-lbl">Importation…</div>
+        <div style="height:5px;background:var(--bg-input);border-radius:3px;overflow:hidden;">
+          <div id="json-imp-progress-bar" style="height:100%;background:var(--red-br);width:0%;transition:width .2s;"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- MANUAL DATA ENTRY -->
     <div class="card" style="padding:18px;margin-bottom:16px;">
       <div style="font-family:'Montserrat',sans-serif;font-size:15px;font-weight:700;margin-bottom:6px;">✍️ Saisie manuelle pour un élève</div>
@@ -6267,7 +6313,7 @@ function clearManualData(){
       const r = _orig.apply(this, arguments);
       if(p === 'reglages'){
         setTimeout(() => {
-          try { populateReglagesClientDropdown(); updateSystemStatus(); updateFakeStudentsUi(); } catch(e){ console.warn(e); }
+          try { populateReglagesClientDropdown(); updateSystemStatus(); updateFakeStudentsUi(); populateJsonImportDropdown(); } catch(e){ console.warn(e); }
         }, 30);
       }
       return r;
@@ -6550,52 +6596,103 @@ function openImportDataModal(targetId){
 
   // Source: all fake students
   const sources = (window.S.clients || []).filter(c => c._fake);
-  if (sources.length === 0) {
-    alert('Aucun élève démo à importer. Charge-les depuis Réglages d\'abord.');
-    return;
-  }
 
-  const opts = sources.map(s => {
+  const srcOpts = sources.map(s => {
     const stats = (window.S.clientStats || {})[String(s.id)];
     const nDays = stats && stats.poids ? stats.poids.length : 0;
-    const nComp = ((window.S.completedSessions || {})[String(s.id)] || []).length;
-    return `<option value="${s.id}">${s.prenom} ${s.nom} — ${s.objectif} · ${nDays * 4}j d'historique · ${nComp} séances</option>`;
+    return `<option value="${s.id}">${s.prenom} ${s.nom} — ${s.objectif} · ${nDays * 4}j</option>`;
   }).join('');
 
   const modalHtml = `
-    <div id="import-data-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeImportDataModal()">
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:16px;max-width:560px;width:100%;padding:24px;font-family:'DM Sans',sans-serif;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+    <div id="import-data-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;" onclick="if(event.target===this)closeImportDataModal()">
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:16px;max-width:620px;width:100%;padding:24px;font-family:'DM Sans',sans-serif;max-height:92vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
           <div>
             <div style="font-family:'Montserrat',sans-serif;font-size:18px;font-weight:800;">Importer un historique</div>
-            <div style="font-size:12px;color:var(--txt3);margin-top:3px;">Copier les données d'un élève démo vers <strong>${displayName(target)}</strong></div>
+            <div style="font-size:12px;color:var(--txt3);margin-top:3px;">Pour <strong>${displayName(target)}</strong></div>
           </div>
           <button onclick="closeImportDataModal()" style="background:transparent;border:none;color:var(--txt3);font-size:22px;cursor:pointer;">✕</button>
         </div>
 
-        <div style="background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.25);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--txt2);line-height:1.5;">
-          ⚠️ <strong>Attention</strong> : cette opération va <strong>écrire dans Firebase</strong> pour cet élève (poids, calories, pas, sommeil, hydratation jour par jour). Les données seront visibles côté élève dans l'app. L'email/code actuel de l'élève n'est pas modifié.
+        <!-- MODE SELECTOR -->
+        <div style="display:flex;gap:6px;margin-bottom:16px;padding:4px;background:var(--bg-input);border-radius:10px;">
+          <button id="imp-tab-demo" onclick="switchImportMode('demo')" style="flex:1;padding:8px 12px;border:none;background:var(--bg-card);color:var(--txt);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">📋 Copier un élève démo</button>
+          <button id="imp-tab-custom" onclick="switchImportMode('custom')" style="flex:1;padding:8px 12px;border:none;background:transparent;color:var(--txt3);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">✨ Générer custom</button>
+        </div>
+
+        <div style="background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.25);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--txt2);line-height:1.5;">
+          ⚠️ Cette opération va <strong>écrire dans Firebase</strong> pour cet élève. Les données seront visibles côté élève dans l'app.
+        </div>
+
+        <!-- MODE: DEMO -->
+        <div id="imp-mode-demo" ${sources.length === 0 ? 'style="display:none;"' : ''}>
+          ${sources.length > 0 ? `
+          <div style="margin-bottom:14px;">
+            <label style="display:block;font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:6px;">Élève démo à copier</label>
+            <select id="imp-source" class="fs" style="width:100%;">${srcOpts}</select>
+          </div>` : '<div style="padding:20px;text-align:center;color:var(--txt3);font-size:12px;">Aucun élève démo. Charge-les depuis Réglages.</div>'}
+        </div>
+
+        <!-- MODE: CUSTOM -->
+        <div id="imp-mode-custom" style="display:none;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div>
+              <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Objectif</label>
+              <select id="imp-c-obj" class="fs" style="width:100%;">
+                <option value="Prise de masse">Prise de masse</option>
+                <option value="Perte de poids">Perte de poids</option>
+                <option value="Sèche">Sèche</option>
+                <option value="Recomposition corporelle">Recomposition corporelle</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Qualité</label>
+              <select id="imp-c-good" class="fs" style="width:100%;">
+                <option value="true">✅ Bon élève (assidu)</option>
+                <option value="false">⚠️ Mauvais élève (peu assidu)</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Durée (jours)</label>
+              <input type="number" id="imp-c-days" class="fs" value="100" min="7" max="180" style="width:100%;">
+              <div style="font-size:10px;color:var(--txt3);margin-top:3px;" id="imp-c-days-lbl">~3,3 mois</div>
+            </div>
+            <div>
+              <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Genre</label>
+              <select id="imp-c-genre" class="fs" style="width:100%;">
+                <option value="Homme">Homme</option>
+                <option value="Femme">Femme</option>
+              </select>
+            </div>
+            <div>
+              <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Poids départ (kg)</label>
+              <input type="number" id="imp-c-wstart" class="fs" value="72" step="0.1" min="40" max="180" style="width:100%;">
+            </div>
+            <div>
+              <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Taille (cm)</label>
+              <input type="number" id="imp-c-taille" class="fs" value="178" min="140" max="210" style="width:100%;">
+            </div>
+            <div>
+              <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Âge</label>
+              <input type="number" id="imp-c-age" class="fs" value="28" min="16" max="80" style="width:100%;">
+            </div>
+          </div>
+          <div id="imp-c-preview" style="background:var(--bg-input);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--txt2);line-height:1.5;margin-bottom:12px;">
+            Prévisualisation : <span id="imp-c-preview-txt">ajuste les paramètres</span>
+          </div>
         </div>
 
         <div style="margin-bottom:14px;">
-          <label style="display:block;font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:6px;">Élève démo à copier</label>
-          <select id="imp-source" class="fs" style="width:100%;">${opts}</select>
-        </div>
-
-        <div style="margin-bottom:14px;">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
             <input type="checkbox" id="imp-shift" checked>
-            <span style="font-size:13px;">Recaler les dates pour <strong>finir aujourd'hui</strong></span>
+            Recaler les dates pour <strong>finir aujourd'hui</strong>
           </label>
-          <div style="font-size:11px;color:var(--txt3);margin-top:4px;margin-left:24px;">Sinon, les dates d'origine (ex: commencé il y a 6 mois) sont conservées.</div>
         </div>
-
-        <div style="margin-bottom:20px;">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <div style="margin-bottom:18px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;">
             <input type="checkbox" id="imp-profile" checked>
-            <span style="font-size:13px;">Copier aussi le <strong>profil</strong> (poids, taille, objectif, macros)</span>
+            Copier aussi le <strong>profil</strong> (poids, taille, macros…)
           </label>
-          <div style="font-size:11px;color:var(--txt3);margin-top:4px;margin-left:24px;">Conserve le nom, email et code de l'élève cible.</div>
         </div>
 
         <div style="display:flex;gap:10px;justify-content:flex-end;">
@@ -6612,8 +6709,70 @@ function openImportDataModal(targetId){
       </div>
     </div>`;
   document.body.insertAdjacentHTML('beforeend', modalHtml);
+  window._impMode = sources.length > 0 ? 'demo' : 'custom';
+  if (sources.length === 0) switchImportMode('custom');
+  document.getElementById('imp-c-days').addEventListener('input', updateCustomPreview);
+  ['imp-c-obj','imp-c-good','imp-c-wstart','imp-c-genre','imp-c-days'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', updateCustomPreview);
+  });
+  updateCustomPreview();
 }
 window.openImportDataModal = openImportDataModal;
+
+function switchImportMode(mode){
+  window._impMode = mode;
+  const demoTab = document.getElementById('imp-tab-demo');
+  const cusTab = document.getElementById('imp-tab-custom');
+  const demoPane = document.getElementById('imp-mode-demo');
+  const cusPane = document.getElementById('imp-mode-custom');
+  if (mode === 'custom'){
+    demoTab.style.background = 'transparent'; demoTab.style.color = 'var(--txt3)';
+    cusTab.style.background = 'var(--bg-card)'; cusTab.style.color = 'var(--txt)';
+    demoPane.style.display = 'none';
+    cusPane.style.display = 'block';
+  } else {
+    demoTab.style.background = 'var(--bg-card)'; demoTab.style.color = 'var(--txt)';
+    cusTab.style.background = 'transparent'; cusTab.style.color = 'var(--txt3)';
+    demoPane.style.display = 'block';
+    cusPane.style.display = 'none';
+  }
+}
+window.switchImportMode = switchImportMode;
+
+function updateCustomPreview(){
+  const days = +(document.getElementById('imp-c-days')?.value || 100);
+  const obj = document.getElementById('imp-c-obj')?.value;
+  const good = document.getElementById('imp-c-good')?.value === 'true';
+  const w0 = +(document.getElementById('imp-c-wstart')?.value || 72);
+  const months = (days / 30).toFixed(1);
+  const weeks = days / 7;
+
+  // Estimate final weight per same logic as gen
+  let delta = 0;
+  if (good) {
+    if (obj === 'Perte de poids') delta = -Math.min(0.65 * weeks, w0 * 0.25);
+    else if (obj === 'Sèche') delta = -Math.min(0.45 * weeks, w0 * 0.15);
+    else if (obj === 'Prise de masse') delta = 2.18 * Math.sqrt(weeks);
+    else if (obj === 'Recomposition corporelle') delta = -Math.min(0.20 * weeks, w0 * 0.07);
+  } else {
+    if (obj === 'Perte de poids') delta = -Math.min(0.30 * weeks, w0 * 0.12);
+    else if (obj === 'Sèche') delta = -Math.min(0.22 * weeks, w0 * 0.08);
+    else if (obj === 'Prise de masse') delta = 1.09 * Math.sqrt(weeks);
+    else if (obj === 'Recomposition corporelle') delta = -Math.min(0.10 * weeks, w0 * 0.04);
+  }
+  const wFinal = +(w0 + delta).toFixed(1);
+
+  const lblEl = document.getElementById('imp-c-days-lbl');
+  if (lblEl) lblEl.textContent = `~${months.replace('.',',')} mois`;
+
+  const txt = document.getElementById('imp-c-preview-txt');
+  if (txt) {
+    const sign = delta >= 0 ? '+' : '';
+    txt.innerHTML = `<strong>${obj}</strong>, ${good?'bon':'mauvais'} élève, ${months.replace('.',',')} mois<br>Poids ${w0} kg → <strong>${wFinal} kg</strong> (${sign}${delta.toFixed(1)} kg)`;
+  }
+}
+window.updateCustomPreview = updateCustomPreview;
 
 function closeImportDataModal(){
   const m = document.getElementById('import-data-modal');
@@ -6623,9 +6782,29 @@ window.closeImportDataModal = closeImportDataModal;
 
 async function executeImport(targetId){
   const target = window.S.clients.find(x => String(x.id) === String(targetId));
-  const sourceId = document.getElementById('imp-source').value;
-  const source = window.S.clients.find(x => String(x.id) === String(sourceId));
-  if (!target || !source) return;
+  if (!target) return;
+
+  const mode = window._impMode || 'demo';
+  let source, sourceStats;
+
+  if (mode === 'demo') {
+    const sourceId = document.getElementById('imp-source').value;
+    source = window.S.clients.find(x => String(x.id) === String(sourceId));
+    if (!source) return;
+    sourceStats = (window.S.clientStats || {})[String(source.id)];
+  } else {
+    // CUSTOM mode — generate on the fly
+    const days = +(document.getElementById('imp-c-days').value || 100);
+    const obj = document.getElementById('imp-c-obj').value;
+    const good = document.getElementById('imp-c-good').value === 'true';
+    const w0 = +(document.getElementById('imp-c-wstart').value || 72);
+    const taille = +(document.getElementById('imp-c-taille').value || 178);
+    const age = +(document.getElementById('imp-c-age').value || 28);
+    const genre = document.getElementById('imp-c-genre').value;
+    const gen = generateCustomStudent({ days, obj, good, w0, taille, age, genre });
+    source = gen.client;
+    sourceStats = gen.stats;
+  }
 
   const shiftDates = document.getElementById('imp-shift').checked;
   const copyProfile = document.getElementById('imp-profile').checked;
@@ -6647,60 +6826,37 @@ async function executeImport(targetId){
     }
 
     const uid = String(target.id);
-    const sourceStats = (window.S.clientStats || {})[String(source.id)];
     if (!sourceStats || !sourceStats.poids) {
-      alert('Cet élève démo n\'a pas de données à copier.');
+      alert('Pas de données à copier.');
       return;
     }
 
-    // Compute date shift
     const originalEnd = sourceStats.poids.length
       ? new Date(sourceStats.poids[sourceStats.poids.length - 1].date)
       : new Date();
     const today = new Date(); today.setHours(0,0,0,0);
     const shiftMs = shiftDates ? (today.getTime() - originalEnd.getTime()) : 0;
-
-    const shiftDate = (d) => {
-      const dt = new Date(d);
-      return new Date(dt.getTime() + shiftMs);
-    };
-
+    const shiftDate = (d) => new Date(new Date(d).getTime() + shiftMs);
     const toDateKey = (d) => {
       const dt = new Date(d);
-      const y = dt.getFullYear();
-      const m = String(dt.getMonth() + 1).padStart(2, '0');
-      const day = String(dt.getDate()).padStart(2, '0');
-      return `${y}-${m}-${day}`;
+      return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
     };
 
-    // 1. Update profile if requested
     if (copyProfile) {
       setProg(5, 'Mise à jour du profil…');
       const update = {
-        taille: source.taille,
-        age: source.age,
-        genre: source.genre,
-        morphologie: source.morphologie,
-        objectif: source.objectif,
-        niveau: source.niveau,
-        poids: source.poids,
-        poids_depart: source.poids_depart,
-        poids_objectif: source.poids_objectif,
-        kcal: source.kcal,
-        prot: source.prot,
-        gluc: source.gluc,
-        lip: source.lip,
-        debut: shiftDates && source.debut
-          ? toDateKey(shiftDate(new Date(source.debut)))
-          : source.debut,
+        taille: source.taille, age: source.age, genre: source.genre,
+        morphologie: source.morphologie, objectif: source.objectif,
+        niveau: source.niveau || 'Intermédiaire',
+        poids: source.poids, poids_depart: source.poids_depart, poids_objectif: source.poids_objectif,
+        kcal: source.kcal, prot: source.prot, gluc: source.gluc, lip: source.lip,
+        debut: shiftDates && source.debut ? toDateKey(shiftDate(new Date(source.debut))) : source.debut,
         color: source.color,
       };
       await db.collection('clients').doc(uid).update(update);
-      // Also update local
       Object.assign(target, update);
     }
 
-    // 2. Write weights
     setProg(15, 'Import du poids…');
     const weights = sourceStats.poids || [];
     for (let i = 0; i < weights.length; i++) {
@@ -6712,12 +6868,7 @@ async function executeImport(targetId){
       setProg(15 + Math.floor((i / weights.length) * 25), `Import poids (${i+1}/${weights.length})…`);
     }
 
-    // 3. Write daily stats (calories, pas, hydra, sommeil) into dailyStats
     setProg(40, 'Import calories/pas/sommeil/hydratation…');
-    const cal = sourceStats.calories || [];
-    const pas = sourceStats.pas || [];
-    const hyd = sourceStats.hydratation || [];
-    const som = sourceStats.sommeil || [];
     const byDate = {};
     const addEntry = (arr, field) => {
       (arr || []).forEach(e => {
@@ -6726,10 +6877,10 @@ async function executeImport(targetId){
         byDate[dk][field] = e.val;
       });
     };
-    addEntry(cal, 'calories');
-    addEntry(pas, 'pas');
-    addEntry(hyd, 'hydratation');
-    addEntry(som, 'sommeil');
+    addEntry(sourceStats.calories, 'calories');
+    addEntry(sourceStats.pas, 'pas');
+    addEntry(sourceStats.hydratation, 'hydratation');
+    addEntry(sourceStats.sommeil, 'sommeil');
 
     const dateKeys = Object.keys(byDate);
     for (let i = 0; i < dateKeys.length; i++) {
@@ -6738,7 +6889,6 @@ async function executeImport(targetId){
       setProg(40 + Math.floor((i / dateKeys.length) * 50), `Import jour (${i+1}/${dateKeys.length})…`);
     }
 
-    // 4. Copy stats to local so coach UI shows them instantly
     if (!window.S.clientStats) window.S.clientStats = {};
     const shiftedStats = {};
     ['poids','calories','pas','hydratation','sommeil','prot','gluc','lip'].forEach(k => {
@@ -6763,6 +6913,367 @@ async function executeImport(targetId){
   }
 }
 window.executeImport = executeImport;
+
+/**
+ * Generate a full synthetic student dataset (profile + stats) in JS.
+ * Mirrors the Python gen6.py logic (weight traj, daily cal/pas/sleep/hydra).
+ */
+function generateCustomStudent({days, obj, good, w0, taille, age, genre}){
+  const weeks = Math.max(days / 7, 0.3);
+  const rand = (min, max) => Math.random() * (max - min) + min;
+  const gauss = (mean, sd) => {
+    // Box-Muller
+    const u1 = Math.random() || 1e-9;
+    const u2 = Math.random() || 1e-9;
+    return mean + sd * Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  };
+
+  // --- Weight delta
+  let delta;
+  if (good) {
+    if (obj === 'Perte de poids') delta = -Math.min(0.65 * weeks, w0 * 0.25);
+    else if (obj === 'Sèche') delta = -Math.min(0.45 * weeks, w0 * 0.15);
+    else if (obj === 'Prise de masse') delta = 2.18 * Math.sqrt(weeks);
+    else if (obj === 'Recomposition corporelle') delta = -Math.min(0.20 * weeks, w0 * 0.07);
+    else delta = 0;
+  } else {
+    if (obj === 'Perte de poids') delta = -Math.min(0.30 * weeks, w0 * 0.12);
+    else if (obj === 'Sèche') delta = -Math.min(0.22 * weeks, w0 * 0.08);
+    else if (obj === 'Prise de masse') delta = 1.09 * Math.sqrt(weeks);
+    else if (obj === 'Recomposition corporelle') delta = -Math.min(0.10 * weeks, w0 * 0.04);
+    else delta = 0;
+  }
+
+  // --- Weight trajectory
+  const today = new Date(); today.setHours(0,0,0,0);
+  const startDate = new Date(today.getTime() - days * 86400000);
+  const weights = [];
+  let prev_w = w0;
+  let d = 0;
+  while (d <= days) {
+    const progress = d / Math.max(days, 1);
+    const smooth = 1 - Math.pow(1 - progress, 1.35);
+    let ideal = w0 + delta * smooth;
+    if (progress < 0.3) {
+      if (Math.random() < 0.18 && Math.abs(delta) > 0.5) {
+        ideal += rand(0.4, 1.1) * (delta < 0 ? 1 : -1);
+      }
+    }
+    const noise = good ? rand(-0.35, 0.35) : rand(-0.6, 0.6);
+    let w = Math.round((ideal + noise) * 10) / 10;
+    if (Math.abs(w - prev_w) > 2.2) w = Math.round((prev_w + (w - prev_w) * 0.5) * 10) / 10;
+    prev_w = w;
+    const dt = new Date(startDate.getTime() + d * 86400000);
+    weights.push({ date: dt.toISOString().slice(0,10), val: w });
+    d += 4 + Math.floor(Math.random() * 2); // step 4-5 days
+  }
+  const w_now = weights.length ? weights[weights.length - 1].val : w0;
+
+  // --- BMR / kcal
+  const bmr = 10*w_now + 6.25*taille - 5*age + (genre === 'Homme' ? 5 : -161);
+  const base = bmr * 1.55;
+  const kcalTarget =
+    obj === 'Perte de poids' ? Math.round(base - 550) :
+    obj === 'Sèche' ? Math.round(base - 350) :
+    obj === 'Prise de masse' ? Math.round(base + 450) :
+    obj === 'Recomposition corporelle' ? Math.round(base - 200) : Math.round(base - 100);
+
+  // --- Macros
+  let prot, gluc, lip;
+  if (obj === 'Prise de masse') { prot=Math.round(w_now*2.2); gluc=Math.round(w_now*5); lip=Math.round(w_now*1.2); }
+  else if (obj === 'Perte de poids') { prot=Math.round(w_now*2.3); gluc=Math.round(w_now*2.3); lip=Math.round(w_now*0.9); }
+  else if (obj === 'Sèche') { prot=Math.round(w_now*2.5); gluc=Math.round(w_now*2.5); lip=Math.round(w_now*0.9); }
+  else if (obj === 'Recomposition corporelle') { prot=Math.round(w_now*2.3); gluc=Math.round(w_now*3.2); lip=Math.round(w_now*1); }
+  else { prot=Math.round(w_now*2); gluc=Math.round(w_now*4.5); lip=Math.round(w_now*1.1); }
+
+  // --- Daily stats
+  const cals = [], pas = [], hyd = [], som = [];
+  for (let dd = 0; dd <= days; dd++) {
+    const dt = new Date(startDate.getTime() + dd * 86400000);
+    const dateStr = dt.toISOString().slice(0,10);
+    const isWe = dt.getDay() === 0 || dt.getDay() === 6;
+    const progress = dd / Math.max(days, 1);
+
+    // cal
+    let calVal;
+    if (good) {
+      calVal = gauss(kcalTarget, 90);
+      if (isWe) calVal += rand(50, 180);
+      calVal = Math.max(1200, Math.round(calVal / 10) * 10);
+    } else {
+      const act = Math.random() < 0.5 ? kcalTarget + rand(50, 250) : kcalTarget;
+      const r = Math.random();
+      if (r < 0.15) calVal = Math.round(act + rand(400, 1000));
+      else if (r < 0.28) calVal = Math.round(Math.max(900, act - rand(500, 900)));
+      else calVal = Math.round(gauss(act, 220));
+    }
+    cals.push({ date: dateStr, val: calVal });
+
+    // pas
+    const stepBase = obj === 'Sèche' ? 10000 : obj === 'Perte de poids' ? 9000 : obj === 'Prise de masse' ? 7000 : 8500;
+    let pasVal;
+    if (good) {
+      pasVal = gauss(stepBase, stepBase * 0.14);
+      if (isWe) pasVal += rand(-1200, 2500);
+      pasVal = Math.max(2500, Math.round(pasVal / 100) * 100);
+    } else {
+      const bb = stepBase * 0.7;
+      pasVal = gauss(bb, bb * 0.25);
+      if (isWe) pasVal += rand(-2000, 2500);
+      pasVal = Math.max(1500, Math.round(pasVal / 100) * 100);
+    }
+    pas.push({ date: dateStr, val: pasVal });
+
+    // hydra
+    const hbase = (good ? 2.1 : 1.6) + progress * (good ? 0.6 : 0.3);
+    hyd.push({ date: dateStr, val: Math.round((hbase + rand(good?-0.25:-0.4, good?0.3:0.4)) * 100) / 100 });
+
+    // sleep
+    let sleepVal;
+    if (good) sleepVal = (isWe ? 8.0 : 7.3) + rand(-0.4, isWe?1.2:0.5);
+    else sleepVal = (isWe ? 7.8 : 6.7) + rand(-1.2, isWe?1.8:1.0);
+    som.push({ date: dateStr, val: Math.round(sleepVal * 10) / 10 });
+  }
+
+  const prot_s = cals.map(e => ({date:e.date, val:Math.round(e.val*0.22/4)}));
+  const gluc_s = cals.map(e => ({date:e.date, val:Math.round(e.val*0.48/4)}));
+  const lip_s  = cals.map(e => ({date:e.date, val:Math.round(e.val*0.30/9)}));
+
+  const bmi = w0 / Math.pow(taille/100, 2);
+  const morph = bmi < 21 ? 'maigre' : (bmi > 27 ? 'enrobe' : (bmi > 24 ? 'ventre' : 'athletique'));
+
+  const w_target =
+    obj === 'Perte de poids' ? Math.round((w0 - Math.min(20, Math.max(10, days/7*0.8))) * 10) / 10 :
+    obj === 'Sèche' ? Math.round((w0 - Math.min(8, Math.max(4, days/7*0.5))) * 10) / 10 :
+    obj === 'Prise de masse' ? Math.round((w0 + 15) * 10) / 10 :
+    obj === 'Recomposition corporelle' ? Math.round((w0 - 5) * 10) / 10 : w0;
+
+  const client = {
+    objectif: obj, niveau: days > 60 ? 'Intermédiaire' : 'Débutant',
+    poids: w_now, poids_depart: w0, poids_objectif: w_target,
+    taille, age, genre,
+    morphologie: morph,
+    kcal: kcalTarget, prot, gluc, lip,
+    debut: startDate.toISOString().slice(0,10),
+    color: '#c0392b',
+  };
+  const stats = {
+    poids: weights,
+    calories: cals, pas, hydratation: hyd, sommeil: som,
+    prot: prot_s, gluc: gluc_s, lip: lip_s,
+  };
+  return { client, stats };
+}
+window.generateCustomStudent = generateCustomStudent;
+
+/* ==========================================================================
+   JSON IMPORT (Settings) — import full history JSON for a specific student
+   ========================================================================== */
+function populateJsonImportDropdown(){
+  const sel = document.getElementById('json-imp-target');
+  if (!sel) return;
+  const opts = (window.S.clients || [])
+    .filter(c => !c._fake)  // only real students
+    .map(c => `<option value="${c.id}">${displayName(c)} — ${c.email || 'sans email'}</option>`)
+    .join('');
+  sel.innerHTML = '<option value="">— Choisir un élève —</option>' + opts;
+}
+window.populateJsonImportDropdown = populateJsonImportDropdown;
+
+function downloadJsonTemplate(){
+  const today = new Date();
+  const threeMonthsAgo = new Date(today.getTime() - 90 * 86400000);
+  const fmt = (d) => d.toISOString().slice(0, 10);
+
+  // Generate a realistic 3-month example
+  const example = {
+    "_note": "Template JSON pour importer l'historique d'un élève. Edite ce fichier et importe-le via Réglages > Importer un JSON pour un élève.",
+    "profile": {
+      "objectif": "Prise de masse",
+      "niveau": "Intermédiaire",
+      "poids_depart": 72.0,
+      "poids_objectif": 82.0,
+      "poids": 80.3,
+      "taille": 178,
+      "age": 28,
+      "genre": "Homme",
+      "morphologie": "athletique",
+      "kcal": 2900,
+      "prot": 175,
+      "gluc": 400,
+      "lip": 95,
+      "debut": fmt(threeMonthsAgo),
+      "color": "#c0392b"
+    },
+    "weights": [
+      {"date": fmt(threeMonthsAgo), "val": 72.0},
+      {"date": fmt(new Date(threeMonthsAgo.getTime() + 7*86400000)), "val": 72.8},
+      {"date": fmt(new Date(threeMonthsAgo.getTime() + 14*86400000)), "val": 73.6},
+      {"date": fmt(new Date(threeMonthsAgo.getTime() + 30*86400000)), "val": 75.2},
+      {"date": fmt(new Date(threeMonthsAgo.getTime() + 60*86400000)), "val": 78.1},
+      {"date": fmt(today), "val": 80.3}
+    ],
+    "dailyStats": [
+      {"date": fmt(threeMonthsAgo), "calories": 2850, "pas": 8500, "sommeil": 7.5, "hydratation": 2.3},
+      {"date": fmt(new Date(threeMonthsAgo.getTime() + 7*86400000)), "calories": 2920, "pas": 7200, "sommeil": 7.2, "hydratation": 2.5},
+      {"date": fmt(today), "calories": 2980, "pas": 8100, "sommeil": 7.8, "hydratation": 2.7}
+    ],
+    "_tips": [
+      "Tu peux avoir entre 20 et 200 entrées dans weights et dailyStats.",
+      "Les dates doivent être au format YYYY-MM-DD.",
+      "L'option 'Recaler pour finir aujourd'hui' décale toutes les dates pour que la dernière tombe pile aujourd'hui.",
+      "L'option 'Copier aussi le profil' applique les champs profile.* à l'élève cible."
+    ]
+  };
+
+  const blob = new Blob([JSON.stringify(example, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'applvl_student_template.json';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+window.downloadJsonTemplate = downloadJsonTemplate;
+
+async function handleJsonStudentImport(event){
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = ''; // reset so same file can be re-imported
+
+  const targetId = document.getElementById('json-imp-target').value;
+  if (!targetId) {
+    alert('⚠️ Choisis d\'abord un élève cible dans le menu déroulant.');
+    return;
+  }
+  const target = window.S.clients.find(x => String(x.id) === String(targetId));
+  if (!target || target._fake) {
+    alert('L\'élève cible doit être un vrai élève (pas un démo).');
+    return;
+  }
+  if (typeof db === 'undefined' || !firebase.auth().currentUser) {
+    alert('Tu dois être connecté au coach (Firebase).');
+    return;
+  }
+
+  let data;
+  try {
+    data = JSON.parse(await file.text());
+  } catch (e) {
+    alert('❌ Fichier JSON invalide : ' + e.message);
+    return;
+  }
+
+  // Validate structure
+  if (!data.profile && !data.weights && !data.dailyStats) {
+    alert('❌ Ce JSON ne contient aucune section reconnue (profile, weights, dailyStats).');
+    return;
+  }
+
+  const shiftDates = document.getElementById('json-imp-shift').checked;
+  const copyProfile = document.getElementById('json-imp-profile').checked;
+
+  const progBox = document.getElementById('json-imp-progress');
+  const progBar = document.getElementById('json-imp-progress-bar');
+  const progLbl = document.getElementById('json-imp-progress-lbl');
+  progBox.style.display = 'block';
+  const setProg = (pct, msg) => {
+    progBar.style.width = pct + '%';
+    if (msg) progLbl.textContent = msg;
+  };
+
+  try {
+    const uid = String(target.id);
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    // Determine shift
+    let shiftMs = 0;
+    if (shiftDates) {
+      const allDates = [];
+      if (data.weights) data.weights.forEach(w => allDates.push(new Date(w.date).getTime()));
+      if (data.dailyStats) data.dailyStats.forEach(d => allDates.push(new Date(d.date).getTime()));
+      if (allDates.length) {
+        const maxDate = Math.max(...allDates);
+        shiftMs = today.getTime() - maxDate;
+      }
+    }
+    const shiftDate = (d) => new Date(new Date(d).getTime() + shiftMs);
+    const toDateKey = (d) => {
+      const dt = new Date(d);
+      return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    };
+
+    // 1. Profile
+    if (copyProfile && data.profile) {
+      setProg(5, 'Mise à jour du profil…');
+      const p = { ...data.profile };
+      if (p.debut && shiftDates) p.debut = toDateKey(shiftDate(new Date(p.debut)));
+      await db.collection('clients').doc(uid).update(p);
+      Object.assign(target, p);
+    }
+
+    // 2. Weights
+    if (data.weights && Array.isArray(data.weights)) {
+      setProg(15, 'Import poids…');
+      for (let i = 0; i < data.weights.length; i++) {
+        const w = data.weights[i];
+        const dk = toDateKey(shiftDate(w.date));
+        await db.collection('clients').doc(uid).collection('weights').doc(dk).set({
+          date: dk, val: w.val, weight: w.val
+        });
+        setProg(15 + Math.floor((i / data.weights.length) * 30), `Poids (${i+1}/${data.weights.length})…`);
+      }
+    }
+
+    // 3. Daily stats
+    if (data.dailyStats && Array.isArray(data.dailyStats)) {
+      setProg(45, 'Import jours…');
+      for (let i = 0; i < data.dailyStats.length; i++) {
+        const d = data.dailyStats[i];
+        const dk = toDateKey(shiftDate(d.date));
+        const doc = { date: dk };
+        ['calories','pas','sommeil','hydratation','prot','gluc','lip'].forEach(k => {
+          if (d[k] !== undefined) doc[k] = d[k];
+        });
+        await db.collection('clients').doc(uid).collection('dailyStats').doc(dk).set(doc);
+        setProg(45 + Math.floor((i / data.dailyStats.length) * 45), `Jour (${i+1}/${data.dailyStats.length})…`);
+      }
+    }
+
+    // 4. Sync local coach state
+    if (!window.S.clientStats) window.S.clientStats = {};
+    const localStats = window.S.clientStats[uid] || {poids:[], calories:[], pas:[], sommeil:[], hydratation:[], prot:[], gluc:[], lip:[]};
+    if (data.weights) {
+      localStats.poids = data.weights.map(w => ({date: toDateKey(shiftDate(w.date)), val: w.val}));
+    }
+    if (data.dailyStats) {
+      ['calories','pas','sommeil','hydratation','prot','gluc','lip'].forEach(k => {
+        localStats[k] = data.dailyStats
+          .filter(d => d[k] !== undefined)
+          .map(d => ({date: toDateKey(shiftDate(d.date)), val: d[k]}));
+      });
+    }
+    window.S.clientStats[uid] = localStats;
+
+    const nW = data.weights ? data.weights.length : 0;
+    const nD = data.dailyStats ? data.dailyStats.length : 0;
+    setProg(100, `✓ Terminé — ${nW} poids + ${nD} jours importés`);
+    toast('✓ JSON importé avec succès pour ' + displayName(target));
+
+    setTimeout(() => { progBox.style.display = 'none'; setProg(0, ''); }, 3500);
+
+    // Refresh UI if looking at this student
+    if (window.S.cur && String(window.S.cur.clientId) === uid) {
+      if (typeof openCli === 'function') openCli(target.id);
+    }
+
+  } catch (e) {
+    console.error(e);
+    progLbl.textContent = '❌ Erreur : ' + (e.message || e);
+    progLbl.style.color = 'var(--red-br)';
+  }
+}
+window.handleJsonStudentImport = handleJsonStudentImport;
 
 // INIT
 renderDash();
