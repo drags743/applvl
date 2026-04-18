@@ -1930,18 +1930,135 @@ function renderDash(){
 }
 
 // ===== CLIENTS =====
+// Client list state: filter + custom order
+if (!window.S.clientsUi) window.S.clientsUi = {filter: 'all', customOrder: null};
+
+function setClientsFilter(f){
+  window.S.clientsUi.filter = f;
+  renderClients();
+}
+window.setClientsFilter = setClientsFilter;
+
+function saveClientsOrder(ids){
+  window.S.clientsUi.customOrder = ids;
+  try { localStorage.setItem('applvl.clientsOrder', JSON.stringify(ids)); } catch(e){}
+}
+
+function loadClientsOrder(){
+  try {
+    const raw = localStorage.getItem('applvl.clientsOrder');
+    if (raw) window.S.clientsUi.customOrder = JSON.parse(raw);
+  } catch(e){}
+}
+loadClientsOrder();
+
+function getSortedFilteredClients(){
+  const ui = window.S.clientsUi;
+  let list = [...(window.S.clients || [])];
+
+  // Default sort: by start date DESC (newest first)
+  list.sort((x,y) => {
+    const dx = x.debut ? new Date(x.debut).getTime() : 0;
+    const dy = y.debut ? new Date(y.debut).getTime() : 0;
+    return dy - dx;
+  });
+
+  // Apply custom order if any
+  if (ui.customOrder && Array.isArray(ui.customOrder) && ui.customOrder.length){
+    const idIndex = new Map(ui.customOrder.map((id,i) => [String(id), i]));
+    list.sort((x,y) => {
+      const ix = idIndex.has(String(x.id)) ? idIndex.get(String(x.id)) : 9999;
+      const iy = idIndex.has(String(y.id)) ? idIndex.get(String(y.id)) : 9999;
+      return ix - iy;
+    });
+  }
+
+  // Apply status filter
+  if (ui.filter === 'active') list = list.filter(c => c.status === 'active');
+  else if (ui.filter === 'warning') list = list.filter(c => c.status === 'warning');
+  else if (ui.filter === 'ended') list = list.filter(c => c.status === 'ended' || c.status === 'blocked');
+  // 'all' = keep everything
+
+  return list;
+}
+
 function renderClients(){
-  const a=S.clients.filter(c=>c.status==='active');
-  const b=S.clients.filter(c=>c.status==='blocked');
-  document.getElementById('cl-sidebar').innerHTML=
-    `<div class="sg-lbl"><div class="sd da"></div> Actifs</div>${a.map((c,i)=>cliItem(c,i)).join('')}`+
-    (b.length?`<div class="sg-lbl" style="margin-top:10px;"><div class="sd db"></div> Bloqués</div>${b.map((c,i)=>cliItem(c,a.length+i)).join('')}`:'');
+  const sidebar = document.getElementById('cl-sidebar');
+  if (!sidebar) return;
+
+  const ui = window.S.clientsUi;
+  const allClients = window.S.clients || [];
+  const counts = {
+    all: allClients.length,
+    active: allClients.filter(c => c.status === 'active').length,
+    warning: allClients.filter(c => c.status === 'warning').length,
+    ended: allClients.filter(c => c.status === 'ended' || c.status === 'blocked').length,
+  };
+
+  const list = getSortedFilteredClients();
+
+  // Filter pill buttons
+  const filterBtn = (val, label, dotCls, count) => {
+    const on = ui.filter === val;
+    return `<button onclick="setClientsFilter('${val}')" style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid ${on?'var(--red)':'var(--brd)'};background:${on?'var(--red)':'transparent'};color:${on?'#fff':'var(--txt2)'};cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">${dotCls?`<span class="sd ${dotCls}" style="width:6px;height:6px;"></span>`:''}${label}<span style="opacity:.6;font-size:10px;">${count}</span></button>`;
+  };
+
+  const filterBar = `<div style="padding:10px 10px 8px 10px;display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--brd);">
+    ${filterBtn('all', 'Tous', '', counts.all)}
+    ${filterBtn('active', 'Actifs', 'da', counts.active)}
+    ${filterBtn('warning', 'Attention', 'do', counts.warning)}
+    ${filterBtn('ended', 'Terminés', 'db', counts.ended)}
+  </div>`;
+
+  const itemsHtml = list.length
+    ? list.map((c,i) => cliItem(c,i)).join('')
+    : `<div style="padding:30px 20px;text-align:center;color:var(--txt3);font-size:12px;">Aucun élève dans cette catégorie</div>`;
+
+  sidebar.innerHTML = filterBar + `<div id="cli-list-items">${itemsHtml}</div>`;
+
+  // Enable drag & drop
+  enableClientsDragDrop();
+}
+
+function enableClientsDragDrop(){
+  const container = document.getElementById('cli-list-items');
+  if (!container) return;
+  const items = container.querySelectorAll('.cli');
+  items.forEach(el => {
+    el.setAttribute('draggable', 'true');
+    el.style.cursor = 'grab';
+
+    el.addEventListener('dragstart', e => {
+      el.classList.add('dragging');
+      el.style.opacity = '0.4';
+      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', el.dataset.cid || ''); } catch(er){}
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      el.style.opacity = '1';
+      // Persist new order
+      const newOrder = Array.from(container.querySelectorAll('.cli')).map(x => x.dataset.cid).filter(Boolean);
+      if (newOrder.length) saveClientsOrder(newOrder);
+    });
+    el.addEventListener('dragover', e => {
+      e.preventDefault();
+      const dragging = container.querySelector('.dragging');
+      if (!dragging || dragging === el) return;
+      const rect = el.getBoundingClientRect();
+      const mid = rect.top + rect.height / 2;
+      if (e.clientY < mid) {
+        if (el.previousSibling !== dragging) container.insertBefore(dragging, el);
+      } else {
+        if (el.nextSibling !== dragging) container.insertBefore(dragging, el.nextSibling);
+      }
+    });
+  });
 }
 
 function cliItem(c,i){
   const active=S.cur.clientId===c.id;
   const meta = getStatusMeta(c.status);
-  return`<div class="cli ${active?'active':''}" onclick="openCli('${c.id}')">
+  return`<div class="cli ${active?'active':''}" data-cid="${c.id}" onclick="openCli('${c.id}')">
     <div class="av" style="width:30px;height:30px;font-size:11px;background:${ac(i)}22;color:${ac(i)}">${ini(c.prenom,c.nom)}</div>
     <div style="flex:1;min-width:0;">
       <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${displayName(c)}</div>
@@ -2032,7 +2149,7 @@ function openCliRender(c, progs, np){
         <div class="ir"><span class="ik">Début</span><span class="iv">${c.debut}</span></div>
         <div class="ir"><span class="ik">Fin</span><span class="iv">${c.fin||'—'}</span></div>
         <div class="ir"><span class="ik">Niveau</span><span class="iv">${c.niveau}</span></div>
-        <div class="ir"><span class="ik">Statut</span><span class="iv">${c.status==='active'?'Actif':'Bloqué'}</span></div>
+        <div class="ir"><span class="ik">Statut</span><span class="iv">${getStatusMeta(c.status).label}</span></div>
       </div>
     </div>
     <div class="is" style="margin-bottom:16px;"><div class="is-t">Programmes sport assignés</div>
