@@ -1931,7 +1931,8 @@ function nav(p){
   if(edBody) edBody.innerHTML='';
   const edTabs = document.getElementById('ed-stabs-row');
   if(edTabs) edTabs.innerHTML='';
-  document.getElementById('tb-actions').innerHTML='<button class="btn btn-p" onclick="restoreNav()">+ Ajouter un client</button>';
+  document.getElementById('tb-actions').innerHTML=`<button id="demo-toggle" onclick="toggleDemoMode()" title="Masquer les infos sensibles des élèves (pour filmer des stories)" style="background:transparent;border:1px solid var(--brd);color:var(--txt2);width:36px;height:36px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;"><svg id="demo-icon-open" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><svg id="demo-icon-closed" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button><button class="btn btn-p" onclick="restoreNav()">+ Ajouter un client</button>`;
+  setTimeout(() => { try { updateDemoToggleUi(); } catch(e){} }, 20);
   document.querySelectorAll('.page').forEach(x=>{x.classList.remove('active');x.style.display='';});
   document.querySelectorAll('.ni').forEach(x=>x.classList.remove('active'));
   const titles={dashboard:'Tableau de bord',clients:'Clients',sport:'Sport — Programmes',exercises:'Bibliothèque d\'exercices',nutrition:'Nutrition',suivi:'Suivi',videos:'Vidéothèque',calendrier:'Calendrier'};
@@ -2164,11 +2165,7 @@ function openCliRender(c, progs, np){
       <div class="av-lg" style="background:${c.color}22;color:${c.color}">${ini(c.prenom,c.nom)}</div>
       <div><div class="cd-name">${displayName(c)}</div>${buildStatusBadge(c)}</div>
       <div class="cd-actions" style="display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-p" onclick="toast('Modification — bientôt disponible')">Modifier</button>
-        ${!c._fake ? `<button title="Importer des données depuis un élève démo" onclick="openImportDataModal('${c.id}')" style="background:transparent;border:1px solid var(--brd);color:var(--txt2);height:34px;padding:0 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;font-family:inherit;transition:.15s;" onmouseover="this.style.color='var(--red-br)';this.style.borderColor='var(--red-br)';" onmouseout="this.style.color='var(--txt2)';this.style.borderColor='var(--brd)';">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Importer
-        </button>` : ''}
+        <button class="btn btn-p" onclick="openEditClientModal('${c.id}')">Modifier</button>
         <button title="Supprimer cet élève" onclick="deleteClient('${c.id}')" style="background:transparent;border:1px solid var(--brd);color:var(--txt2);width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;" onmouseover="this.style.color='var(--red-br)';this.style.borderColor='var(--red-br)';this.style.background='rgba(192,57,43,.08)';" onmouseout="this.style.color='var(--txt2)';this.style.borderColor='var(--brd)';this.style.background='transparent';">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
@@ -7274,6 +7271,211 @@ async function handleJsonStudentImport(event){
   }
 }
 window.handleJsonStudentImport = handleJsonStudentImport;
+
+/* ==========================================================================
+   EDIT CLIENT MODAL — modify profile info
+   ========================================================================== */
+function openEditClientModal(clientId){
+  const c = window.S.clients.find(x => String(x.id) === String(clientId));
+  if (!c) return;
+
+  const field = (id, label, val, type='text', extra='') => `
+    <div>
+      <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">${label}</label>
+      <input type="${type}" id="${id}" class="fs" value="${val ?? ''}" ${extra} style="width:100%;">
+    </div>`;
+
+  const selectField = (id, label, val, options) => `
+    <div>
+      <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">${label}</label>
+      <select id="${id}" class="fs" style="width:100%;">
+        ${options.map(o => `<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('')}
+      </select>
+    </div>`;
+
+  const modalHtml = `
+    <div id="edit-client-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;" onclick="if(event.target===this)closeEditClientModal()">
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:16px;max-width:720px;width:100%;padding:24px;font-family:'DM Sans',sans-serif;max-height:92vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div>
+            <div style="font-family:'Montserrat',sans-serif;font-size:18px;font-weight:800;">Modifier l'élève</div>
+            <div style="font-size:12px;color:var(--txt3);margin-top:3px;">${c.prenom} ${c.nom}</div>
+          </div>
+          <button onclick="closeEditClientModal()" style="background:transparent;border:none;color:var(--txt3);font-size:22px;cursor:pointer;">✕</button>
+        </div>
+
+        <!-- IDENTITÉ -->
+        <div style="font-size:11px;color:var(--red-br);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:10px;">Identité</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+          ${field('ec-prenom', 'Prénom', c.prenom)}
+          ${field('ec-nom', 'Nom', c.nom)}
+          ${field('ec-email', 'Email', c.email, 'email')}
+          ${field('ec-tel', 'Téléphone', c.tel, 'tel')}
+          ${field('ec-age', 'Âge', c.age, 'number', 'min="10" max="100"')}
+          ${selectField('ec-genre', 'Genre', c.genre || 'Homme', ['Homme', 'Femme'])}
+        </div>
+
+        <!-- COACHING -->
+        <div style="font-size:11px;color:var(--red-br);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:10px;">Coaching</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+          ${selectField('ec-objectif', 'Objectif', c.objectif || 'Prise de masse', ['Prise de masse','Perte de poids','Sèche','Recomposition corporelle'])}
+          ${selectField('ec-niveau', 'Niveau', c.niveau || 'Débutant', ['Débutant','Intermédiaire','Avancé'])}
+          ${selectField('ec-status', 'Statut', c.status || 'active', ['active','warning','ended','blocked'])}
+          ${field('ec-debut', 'Date de début', c.debut || '', 'date')}
+          ${field('ec-fin', 'Date de fin (optionnel)', c.fin || '', 'date')}
+        </div>
+
+        <!-- PHYSIQUE -->
+        <div style="font-size:11px;color:var(--red-br);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:10px;">Physique</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:10px;">
+          ${field('ec-taille', 'Taille (cm)', c.taille, 'number', 'min="100" max="230"')}
+          ${field('ec-poids-depart', 'Poids départ (kg)', c.poids_depart, 'number', 'step="0.1" min="30"')}
+          ${field('ec-poids', 'Poids actuel (kg)', c.poids, 'number', 'step="0.1" min="30"')}
+          ${field('ec-poids-obj', 'Poids objectif (kg)', c.poids_objectif, 'number', 'step="0.1" min="30"')}
+          ${selectField('ec-morph', 'Morphologie', c.morphologie || 'athletique', ['maigre','athletique','ventre','enrobe'])}
+        </div>
+        <div style="margin-bottom:18px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer;color:var(--txt3);">
+            <input type="checkbox" id="ec-morph-auto" ${!c.morphologie || c.morphologie==='athletique'?'checked':''}>
+            Laisser la morphologie s'adapter automatiquement au poids (recommandé)
+          </label>
+        </div>
+
+        <!-- NUTRITION -->
+        <div style="font-size:11px;color:var(--red-br);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:10px;">Nutrition (objectifs quotidiens)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:10px;">
+          ${field('ec-kcal', 'Calories', c.kcal, 'number', 'min="800"')}
+          ${field('ec-prot', 'Protéines (g)', c.prot, 'number', 'min="0"')}
+          ${field('ec-gluc', 'Glucides (g)', c.gluc, 'number', 'min="0"')}
+          ${field('ec-lip', 'Lipides (g)', c.lip, 'number', 'min="0"')}
+        </div>
+        <div style="margin-bottom:18px;">
+          <button type="button" onclick="autoCalcMacros()" class="btn" style="font-size:11px;padding:6px 12px;">
+            🧮 Recalculer auto selon poids, objectif, âge, genre, taille
+          </button>
+        </div>
+
+        <!-- ACTIONS -->
+        <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:16px;border-top:1px solid var(--brd);">
+          <button onclick="closeEditClientModal()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--brd);background:transparent;color:var(--txt2);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>
+          <button onclick="saveEditedClient('${c.id}')" class="btn btn-p" style="padding:10px 22px;">Enregistrer</button>
+        </div>
+
+        <div id="ec-status" style="margin-top:12px;font-size:11px;color:var(--txt3);"></div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+window.openEditClientModal = openEditClientModal;
+
+function closeEditClientModal(){
+  const m = document.getElementById('edit-client-modal');
+  if (m) m.remove();
+}
+window.closeEditClientModal = closeEditClientModal;
+
+function autoCalcMacros(){
+  const poids = +(document.getElementById('ec-poids').value || 70);
+  const taille = +(document.getElementById('ec-taille').value || 175);
+  const age = +(document.getElementById('ec-age').value || 30);
+  const genre = document.getElementById('ec-genre').value;
+  const obj = document.getElementById('ec-objectif').value;
+
+  const bmr = 10*poids + 6.25*taille - 5*age + (genre === 'Homme' ? 5 : -161);
+  const base = bmr * 1.55;
+  let kcal, prot, gluc, lip;
+  if (obj === 'Perte de poids') { kcal = Math.round(base - 550); prot = Math.round(poids*2.3); gluc = Math.round(poids*2.3); lip = Math.round(poids*0.9); }
+  else if (obj === 'Sèche') { kcal = Math.round(base - 350); prot = Math.round(poids*2.5); gluc = Math.round(poids*2.5); lip = Math.round(poids*0.9); }
+  else if (obj === 'Prise de masse') { kcal = Math.round(base + 450); prot = Math.round(poids*2.2); gluc = Math.round(poids*5); lip = Math.round(poids*1.2); }
+  else { kcal = Math.round(base - 150); prot = Math.round(poids*2.3); gluc = Math.round(poids*3.2); lip = Math.round(poids*1); }
+
+  document.getElementById('ec-kcal').value = kcal;
+  document.getElementById('ec-prot').value = prot;
+  document.getElementById('ec-gluc').value = gluc;
+  document.getElementById('ec-lip').value = lip;
+}
+window.autoCalcMacros = autoCalcMacros;
+
+async function saveEditedClient(clientId){
+  const c = window.S.clients.find(x => String(x.id) === String(clientId));
+  if (!c) return;
+
+  const getVal = (id) => document.getElementById(id).value.trim();
+  const getNum = (id) => {
+    const v = document.getElementById(id).value;
+    return v === '' ? null : +v;
+  };
+
+  const autoMorph = document.getElementById('ec-morph-auto').checked;
+  const taille = getNum('ec-taille');
+  const poids = getNum('ec-poids');
+  let morph = document.getElementById('ec-morph').value;
+  if (autoMorph && taille && poids) {
+    const bmi = poids / ((taille/100)**2);
+    if (bmi < 20.5) morph = 'maigre';
+    else if (bmi <= 25) morph = 'athletique';
+    else if (bmi <= 27.5) morph = 'ventre';
+    else morph = 'enrobe';
+  }
+
+  const update = {
+    prenom: getVal('ec-prenom'),
+    nom: getVal('ec-nom'),
+    email: getVal('ec-email'),
+    tel: getVal('ec-tel'),
+    age: getNum('ec-age'),
+    genre: getVal('ec-genre'),
+    objectif: getVal('ec-objectif'),
+    niveau: getVal('ec-niveau'),
+    status: getVal('ec-status'),
+    debut: getVal('ec-debut') || null,
+    fin: getVal('ec-fin') || null,
+    taille,
+    poids_depart: getNum('ec-poids-depart'),
+    poids,
+    poids_objectif: getNum('ec-poids-obj'),
+    morphologie: morph,
+    kcal: getNum('ec-kcal'),
+    prot: getNum('ec-prot'),
+    gluc: getNum('ec-gluc'),
+    lip: getNum('ec-lip'),
+  };
+
+  // Validation
+  if (!update.prenom) { alert('Le prénom est requis'); return; }
+
+  const statusEl = document.getElementById('ec-status');
+  statusEl.textContent = 'Enregistrement…';
+
+  try {
+    // Update local
+    Object.assign(c, update);
+
+    // Sync to Firebase for real clients only
+    if (!c._fake && typeof db !== 'undefined' && firebase.auth().currentUser) {
+      // Remove undefined/null keys that would overwrite Firebase with null
+      const cleanUpdate = {};
+      Object.keys(update).forEach(k => {
+        if (update[k] !== null && update[k] !== undefined) cleanUpdate[k] = update[k];
+      });
+      await db.collection('clients').doc(String(c.id)).update(cleanUpdate);
+    }
+
+    statusEl.textContent = '✓ Enregistré';
+    statusEl.style.color = 'var(--green)';
+    toast('✓ Élève mis à jour');
+    closeEditClientModal();
+
+    // Refresh views
+    if (typeof renderClients === 'function') renderClients();
+    if (typeof openCli === 'function') openCli(c.id);
+  } catch (e) {
+    console.error(e);
+    statusEl.textContent = '❌ Erreur : ' + (e.message || e);
+    statusEl.style.color = 'var(--red-br)';
+  }
+}
+window.saveEditedClient = saveEditedClient;
 
 // INIT
 renderDash();
