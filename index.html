@@ -2119,6 +2119,10 @@ function openCliRender(c, progs, np){
       <div><div class="cd-name">${displayName(c)}</div>${buildStatusBadge(c)}</div>
       <div class="cd-actions" style="display:flex;gap:8px;align-items:center;">
         <button class="btn btn-p" onclick="toast('Modification — bientôt disponible')">Modifier</button>
+        ${!c._fake ? `<button title="Importer des données depuis un élève démo" onclick="openImportDataModal('${c.id}')" style="background:transparent;border:1px solid var(--brd);color:var(--txt2);height:34px;padding:0 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;font-family:inherit;transition:.15s;" onmouseover="this.style.color='var(--red-br)';this.style.borderColor='var(--red-br)';" onmouseout="this.style.color='var(--txt2)';this.style.borderColor='var(--brd)';">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Importer
+        </button>` : ''}
         <button title="Supprimer cet élève" onclick="deleteClient('${c.id}')" style="background:transparent;border:1px solid var(--brd);color:var(--txt2);width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;" onmouseover="this.style.color='var(--red-br)';this.style.borderColor='var(--red-br)';this.style.background='rgba(192,57,43,.08)';" onmouseout="this.style.color='var(--txt2)';this.style.borderColor='var(--brd)';this.style.background='transparent';">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
@@ -6535,6 +6539,230 @@ async function deleteClient(clientId, silent){
   if(!silent) toast('✓ Élève supprimé');
 }
 window.deleteClient = deleteClient;
+
+/* ==========================================================================
+   IMPORT DE DONNÉES — copie l'historique d'un élève démo vers un vrai
+   ========================================================================== */
+function openImportDataModal(targetId){
+  const target = window.S.clients.find(x => String(x.id) === String(targetId));
+  if (!target) return;
+  if (target._fake) { toast('Cet élève est déjà un élève démo'); return; }
+
+  // Source: all fake students
+  const sources = (window.S.clients || []).filter(c => c._fake);
+  if (sources.length === 0) {
+    alert('Aucun élève démo à importer. Charge-les depuis Réglages d\'abord.');
+    return;
+  }
+
+  const opts = sources.map(s => {
+    const stats = (window.S.clientStats || {})[String(s.id)];
+    const nDays = stats && stats.poids ? stats.poids.length : 0;
+    const nComp = ((window.S.completedSessions || {})[String(s.id)] || []).length;
+    return `<option value="${s.id}">${s.prenom} ${s.nom} — ${s.objectif} · ${nDays * 4}j d'historique · ${nComp} séances</option>`;
+  }).join('');
+
+  const modalHtml = `
+    <div id="import-data-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeImportDataModal()">
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:16px;max-width:560px;width:100%;padding:24px;font-family:'DM Sans',sans-serif;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div>
+            <div style="font-family:'Montserrat',sans-serif;font-size:18px;font-weight:800;">Importer un historique</div>
+            <div style="font-size:12px;color:var(--txt3);margin-top:3px;">Copier les données d'un élève démo vers <strong>${displayName(target)}</strong></div>
+          </div>
+          <button onclick="closeImportDataModal()" style="background:transparent;border:none;color:var(--txt3);font-size:22px;cursor:pointer;">✕</button>
+        </div>
+
+        <div style="background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.25);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--txt2);line-height:1.5;">
+          ⚠️ <strong>Attention</strong> : cette opération va <strong>écrire dans Firebase</strong> pour cet élève (poids, calories, pas, sommeil, hydratation jour par jour). Les données seront visibles côté élève dans l'app. L'email/code actuel de l'élève n'est pas modifié.
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:6px;">Élève démo à copier</label>
+          <select id="imp-source" class="fs" style="width:100%;">${opts}</select>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="imp-shift" checked>
+            <span style="font-size:13px;">Recaler les dates pour <strong>finir aujourd'hui</strong></span>
+          </label>
+          <div style="font-size:11px;color:var(--txt3);margin-top:4px;margin-left:24px;">Sinon, les dates d'origine (ex: commencé il y a 6 mois) sont conservées.</div>
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="imp-profile" checked>
+            <span style="font-size:13px;">Copier aussi le <strong>profil</strong> (poids, taille, objectif, macros)</span>
+          </label>
+          <div style="font-size:11px;color:var(--txt3);margin-top:4px;margin-left:24px;">Conserve le nom, email et code de l'élève cible.</div>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button onclick="closeImportDataModal()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--brd);background:transparent;color:var(--txt2);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>
+          <button onclick="executeImport('${targetId}')" class="btn btn-p" style="padding:10px 22px;">Importer</button>
+        </div>
+
+        <div id="imp-progress" style="margin-top:14px;display:none;">
+          <div style="font-size:12px;color:var(--txt3);margin-bottom:6px;" id="imp-progress-lbl">Importation…</div>
+          <div style="height:6px;background:var(--bg-input);border-radius:3px;overflow:hidden;">
+            <div id="imp-progress-bar" style="height:100%;background:var(--red-br);width:0%;transition:width .2s;"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+window.openImportDataModal = openImportDataModal;
+
+function closeImportDataModal(){
+  const m = document.getElementById('import-data-modal');
+  if (m) m.remove();
+}
+window.closeImportDataModal = closeImportDataModal;
+
+async function executeImport(targetId){
+  const target = window.S.clients.find(x => String(x.id) === String(targetId));
+  const sourceId = document.getElementById('imp-source').value;
+  const source = window.S.clients.find(x => String(x.id) === String(sourceId));
+  if (!target || !source) return;
+
+  const shiftDates = document.getElementById('imp-shift').checked;
+  const copyProfile = document.getElementById('imp-profile').checked;
+
+  const progBox = document.getElementById('imp-progress');
+  const progBar = document.getElementById('imp-progress-bar');
+  const progLbl = document.getElementById('imp-progress-lbl');
+  progBox.style.display = 'block';
+
+  const setProg = (pct, msg) => {
+    progBar.style.width = pct + '%';
+    if (msg) progLbl.textContent = msg;
+  };
+
+  try {
+    if (typeof db === 'undefined' || !firebase.auth().currentUser) {
+      alert('Tu dois être connecté au coach pour importer (Firebase).');
+      return;
+    }
+
+    const uid = String(target.id);
+    const sourceStats = (window.S.clientStats || {})[String(source.id)];
+    if (!sourceStats || !sourceStats.poids) {
+      alert('Cet élève démo n\'a pas de données à copier.');
+      return;
+    }
+
+    // Compute date shift
+    const originalEnd = sourceStats.poids.length
+      ? new Date(sourceStats.poids[sourceStats.poids.length - 1].date)
+      : new Date();
+    const today = new Date(); today.setHours(0,0,0,0);
+    const shiftMs = shiftDates ? (today.getTime() - originalEnd.getTime()) : 0;
+
+    const shiftDate = (d) => {
+      const dt = new Date(d);
+      return new Date(dt.getTime() + shiftMs);
+    };
+
+    const toDateKey = (d) => {
+      const dt = new Date(d);
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const day = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    // 1. Update profile if requested
+    if (copyProfile) {
+      setProg(5, 'Mise à jour du profil…');
+      const update = {
+        taille: source.taille,
+        age: source.age,
+        genre: source.genre,
+        morphologie: source.morphologie,
+        objectif: source.objectif,
+        niveau: source.niveau,
+        poids: source.poids,
+        poids_depart: source.poids_depart,
+        poids_objectif: source.poids_objectif,
+        kcal: source.kcal,
+        prot: source.prot,
+        gluc: source.gluc,
+        lip: source.lip,
+        debut: shiftDates && source.debut
+          ? toDateKey(shiftDate(new Date(source.debut)))
+          : source.debut,
+        color: source.color,
+      };
+      await db.collection('clients').doc(uid).update(update);
+      // Also update local
+      Object.assign(target, update);
+    }
+
+    // 2. Write weights
+    setProg(15, 'Import du poids…');
+    const weights = sourceStats.poids || [];
+    for (let i = 0; i < weights.length; i++) {
+      const w = weights[i];
+      const dk = toDateKey(shiftDate(w.date));
+      await db.collection('clients').doc(uid).collection('weights').doc(dk).set({
+        date: dk, val: w.val, weight: w.val,
+      });
+      setProg(15 + Math.floor((i / weights.length) * 25), `Import poids (${i+1}/${weights.length})…`);
+    }
+
+    // 3. Write daily stats (calories, pas, hydra, sommeil) into dailyStats
+    setProg(40, 'Import calories/pas/sommeil/hydratation…');
+    const cal = sourceStats.calories || [];
+    const pas = sourceStats.pas || [];
+    const hyd = sourceStats.hydratation || [];
+    const som = sourceStats.sommeil || [];
+    const byDate = {};
+    const addEntry = (arr, field) => {
+      (arr || []).forEach(e => {
+        const dk = toDateKey(shiftDate(e.date));
+        if (!byDate[dk]) byDate[dk] = { date: dk };
+        byDate[dk][field] = e.val;
+      });
+    };
+    addEntry(cal, 'calories');
+    addEntry(pas, 'pas');
+    addEntry(hyd, 'hydratation');
+    addEntry(som, 'sommeil');
+
+    const dateKeys = Object.keys(byDate);
+    for (let i = 0; i < dateKeys.length; i++) {
+      const dk = dateKeys[i];
+      await db.collection('clients').doc(uid).collection('dailyStats').doc(dk).set(byDate[dk]);
+      setProg(40 + Math.floor((i / dateKeys.length) * 50), `Import jour (${i+1}/${dateKeys.length})…`);
+    }
+
+    // 4. Copy stats to local so coach UI shows them instantly
+    if (!window.S.clientStats) window.S.clientStats = {};
+    const shiftedStats = {};
+    ['poids','calories','pas','hydratation','sommeil','prot','gluc','lip'].forEach(k => {
+      shiftedStats[k] = (sourceStats[k] || []).map(e => ({
+        date: toDateKey(shiftDate(e.date)),
+        val: e.val,
+      }));
+    });
+    window.S.clientStats[uid] = shiftedStats;
+
+    setProg(100, '✓ Import terminé !');
+    setTimeout(() => {
+      closeImportDataModal();
+      toast('Import réussi — ' + dateKeys.length + ' jours de données ajoutés');
+      if (typeof openCli === 'function') openCli(target.id);
+    }, 700);
+
+  } catch (e) {
+    console.error(e);
+    progLbl.textContent = '❌ Erreur : ' + (e.message || e);
+    progLbl.style.color = 'var(--red-br)';
+  }
+}
+window.executeImport = executeImport;
 
 // INIT
 renderDash();
