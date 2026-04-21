@@ -1138,6 +1138,12 @@ async function loadStudentProfile(uid){
     attachProfileListener(uid);
     // Attach listener for weight history subcollection
     attachWeightHistoryListener(uid);
+    // Listener for calendar events (planned sessions pushed by coach)
+    attachEventsListener(uid);
+    // Listener for assigned programs
+    attachProgramsListener(uid);
+    // Check for an unfinished session (auto-save recovery)
+    checkUnfinishedSession(uid);
   } catch(e){
     console.warn('loadStudentProfile err', e);
     throw e;
@@ -1173,6 +1179,107 @@ function attachWeightHistoryListener(uid){
         try { renderAccueil(); } catch(e){}
       }
     }, err => console.warn('weights listener err', err));
+}
+
+/* Events listener: coach plans sessions → student sees them in calendar + accueil */
+/* Check if user has an unfinished session from a previous visit.
+   If yes, offer to resume it so nothing is lost. */
+async function checkUnfinishedSession(uid){
+  if(typeof fbDb === 'undefined') return;
+  try {
+    const doc = await fbDb.collection('clients').doc(uid)
+      .collection('activeSession').doc('current').get();
+    if(!doc.exists) return;
+    const saved = doc.data();
+    if(!saved || !saved.exercises || saved.completed) return;
+
+    // Check age — if older than 3 days, probably forgot about it, silently delete
+    const savedAt = saved.updatedAt ? new Date(saved.updatedAt) : null;
+    if(savedAt && (Date.now() - savedAt.getTime()) > 3 * 86400000){
+      fbDb.collection('clients').doc(uid).collection('activeSession').doc('current').delete().catch(()=>{});
+      return;
+    }
+
+    const when = savedAt ? savedAt.toLocaleDateString('fr-FR',{day:'numeric',month:'long'}) + ' à ' + savedAt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : 'dernièrement';
+    const sessName = saved.sessionName || 'ta séance';
+
+    // Wait a moment so the app is rendered before prompting
+    setTimeout(() => {
+      const ok = confirm('🔄 Reprendre ta séance ?\n\nTu as commencé "' + sessName + '" le ' + when + ' sans la terminer.\nTes répétitions et poids ont été sauvegardés automatiquement.\n\nCliquer OK pour reprendre, Annuler pour supprimer.');
+      if(ok){
+        resumeSavedSession(saved);
+      } else {
+        fbDb.collection('clients').doc(uid).collection('activeSession').doc('current').delete().catch(()=>{});
+        toast('Séance supprimée');
+      }
+    }, 800);
+  } catch(e){ console.warn('checkUnfinishedSession err', e); }
+}
+
+function resumeSavedSession(saved){
+  if(!saved || !saved.exercises) return;
+  activeSession = {
+    nom: saved.sessionName || 'Séance',
+    sessionName: saved.sessionName,
+    programId: saved.programId,
+    seanceIdx: saved.seanceIdx,
+    exercises: saved.exercises,
+  };
+  activeExIdx = saved.activeExIdx || 0;
+  activeSerIdx = saved.activeSerIdx || 0;
+
+  // Move cursor to first non-validated series if possible
+  outer: for(let ei = 0; ei < activeSession.exercises.length; ei++){
+    for(let si = 0; si < activeSession.exercises[ei].series.length; si++){
+      if(!activeSession.exercises[ei].series[si].done){
+        activeExIdx = ei; activeSerIdx = si;
+        break outer;
+      }
+    }
+  }
+
+  sessionStartTs = Date.now();
+  startDurationTimer();
+  renderExo();
+  nav('exo');
+  toast('✓ Séance reprise — tes données sont préservées');
+}
+window.checkUnfinishedSession = checkUnfinishedSession;
+window.resumeSavedSession = resumeSavedSession;
+
+function attachEventsListener(uid){
+  fbDb.collection('clients').doc(uid).collection('events')
+    .onSnapshot(snap => {
+      const arr = snap.docs.map(d => {
+        const x = d.data();
+        if(!x.id) x.id = d.id;
+        return x;
+      });
+      if(!APP.clientEvents) APP.clientEvents = {};
+      APP.clientEvents[uid] = arr;
+      if(currentClient && currentClient.id === uid){
+        try { if(typeof renderAccueil === 'function') renderAccueil(); } catch(e){}
+        try { if(typeof renderSport === 'function') renderSport(); } catch(e){}
+        try { if(typeof renderCalendar === 'function') renderCalendar(); } catch(e){}
+      }
+    }, err => console.warn('events listener err', err));
+}
+
+/* Programs listener: coach assigns programs → student sees them */
+function attachProgramsListener(uid){
+  fbDb.collection('clients').doc(uid).collection('programs')
+    .onSnapshot(snap => {
+      const arr = snap.docs.map(d => {
+        const x = d.data();
+        if(!x.id) x.id = d.id;
+        return x;
+      });
+      if(!APP.clientPrograms) APP.clientPrograms = {};
+      APP.clientPrograms[uid] = arr;
+      if(currentClient && currentClient.id === uid){
+        try { if(typeof renderSport === 'function') renderSport(); } catch(e){}
+      }
+    }, err => console.warn('programs listener err', err));
 }
 
 async function loadAllStudentsForPicker(){
@@ -1670,6 +1777,9 @@ function validateAndRest(){
     }
   }
 
+  // Auto-save after every validated series
+  autoSaveSession();
+
   // Prepare "Série précédente" display
   document.getElementById('prev-kg').textContent = ser.kg;
   document.getElementById('prev-reps').textContent = ser.reps;
@@ -1785,6 +1895,11 @@ function finishSession(){
         })
         .then(() => console.log('Session synced to coach'))
         .catch(e => console.warn('completed sync err', e));
+
+      // Clear the auto-saved active session (it's now completed)
+      fbDb.collection('clients').doc(String(currentClient.id))
+        .collection('activeSession').doc('current').delete()
+        .catch(e => console.warn('autoSave clear err', e));
     }
   }
 
@@ -1988,7 +2103,36 @@ function saveEdit(){
   ser[editContext.field] = val;
   closeEdit();
   renderExo();
+  autoSaveSession();  // auto-save after every edit
   toast('✓ Valeur mise à jour');
+}
+
+/* ======================================================================
+   AUTO-SAVE SÉANCE — sauvegarde toutes les modifs en Firebase toutes les 3s
+   Même si l'élève oublie de valider, toutes ses reps/poids sont conservés.
+   ====================================================================== */
+let _autoSaveTimer = null;
+function autoSaveSession(){
+  if(_autoSaveTimer) clearTimeout(_autoSaveTimer);
+  _autoSaveTimer = setTimeout(doAutoSaveSession, 3000);
+}
+async function doAutoSaveSession(){
+  if(!activeSession || !currentClient || !currentClient.id) return;
+  if(typeof fbDb === 'undefined') return;
+  const user = (typeof fbAuth !== 'undefined') ? fbAuth.currentUser : (firebase.auth ? firebase.auth().currentUser : null);
+  if(!user) return;
+  try {
+    const payload = {
+      sessionName: activeSession.nom || activeSession.sessionName || 'Séance',
+      programId: activeSession.programId || null,
+      seanceIdx: (activeSession.seanceIdx !== undefined && activeSession.seanceIdx !== null) ? activeSession.seanceIdx : null,
+      activeExIdx, activeSerIdx,
+      exercises: activeSession.exercises,
+      updatedAt: new Date().toISOString(),
+      completed: false,
+    };
+    await fbDb.collection('clients').doc(currentClient.id).collection('activeSession').doc('current').set(payload);
+  } catch(e){ console.warn('autoSave err', e); }
 }
 
 /* ======================================================================
