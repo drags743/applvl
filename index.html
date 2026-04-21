@@ -2960,10 +2960,41 @@ window.deleteProgram = deleteProgram;
 
 function filterProg(f,btn){document.querySelectorAll('#page-sport .fb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
 
-function addProgram(){
-  const n=document.getElementById('pp-nom').value.trim();if(!n){toast('Donnez un nom');return;}
-  S.programs.push({id:Date.now(),nom:n,type:document.getElementById('pp-type').value,client_id:+document.getElementById('pp-client').value||null,debut:new Date().toISOString().split('T')[0],fin:null,progress:0,seances:[]});
-  closeModal('mo-prog');toast('✓ Programme créé');renderProgs();
+async function addProgram(){
+  const n=document.getElementById('pp-nom').value.trim();
+  if(!n){toast('Donnez un nom');return;}
+
+  // Support both numeric IDs (demo) and string UIDs (Firebase)
+  const rawClient = document.getElementById('pp-client').value;
+  const client_id = rawClient === '' ? null : (/^\d+$/.test(rawClient) ? +rawClient : rawClient);
+
+  const prog = {
+    id: Date.now(),
+    nom: n,
+    type: document.getElementById('pp-type').value,
+    client_id,
+    debut: new Date().toISOString().split('T')[0],
+    fin: null,
+    progress: 0,
+    seances: []
+  };
+  S.programs.push(prog);
+  closeModal('mo-prog');
+
+  // Sync to Firebase for real clients so the program lives in clients/{uid}/programs
+  if(client_id){
+    const c = S.clients.find(x => String(x.id) === String(client_id));
+    if(c && !c._fake && typeof db !== 'undefined' && firebase.auth().currentUser){
+      try {
+        await db.collection('clients').doc(String(client_id))
+          .collection('programs').doc(String(prog.id))
+          .set(prog);
+      } catch(e){ console.warn('addProgram FB err', e); }
+    }
+  }
+
+  toast('✓ Programme créé');
+  renderProgs();
 }
 
 // ===== EXERCISES =====
@@ -3555,12 +3586,24 @@ function openCalAddModal(clientId, type, dateStr) {
   const progSel = document.getElementById('cal-event-program');
   if (progSel) {
     const clientProgs = (S.programs || []).filter(p => String(p.client_id) === String(clientId));
-    progSel.innerHTML = '<option value="">— Aucun programme —</option>' +
-      clientProgs.map(p => `<option value="${p.id}">${p.nom}</option>`).join('');
+    if (clientProgs.length === 0) {
+      progSel.innerHTML = '<option value="">— Aucun programme assigné —</option>';
+    } else if (clientProgs.length === 1) {
+      // Only one program? Pre-select it
+      progSel.innerHTML = `<option value="${clientProgs[0].id}" selected>${clientProgs[0].nom}</option>`;
+    } else {
+      progSel.innerHTML = '<option value="">— Choisir un programme —</option>' +
+        clientProgs.map(p => `<option value="${p.id}">${p.nom}</option>`).join('');
+    }
   }
   // Reset seance dropdown
   const seanceSel = document.getElementById('cal-event-seance');
-  if (seanceSel) seanceSel.innerHTML = '<option value="">— Aucune séance —</option>';
+  if (seanceSel) seanceSel.innerHTML = '<option value="">— Choisir un programme d\'abord —</option>';
+
+  // If one program was auto-selected, trigger the seance dropdown update
+  setTimeout(() => {
+    if (progSel && progSel.value) onCalEventProgramChange();
+  }, 50);
 
   // Show/hide program wrap depending on type
   onCalEventTypeChange();
@@ -3581,24 +3624,41 @@ window.onCalEventTypeChange = onCalEventTypeChange;
 function onCalEventProgramChange() {
   const progId = document.getElementById('cal-event-program')?.value;
   const seanceSel = document.getElementById('cal-event-seance');
+  const nomInput = document.getElementById('cal-event-nom');
   if (!seanceSel) return;
   if (!progId) {
     seanceSel.innerHTML = '<option value="">— Aucune séance —</option>';
     return;
   }
   const prog = (S.programs || []).find(p => String(p.id) === String(progId));
-  if (!prog || !prog.seances) {
+  if (!prog || !prog.seances || prog.seances.length === 0) {
     seanceSel.innerHTML = '<option value="">— Aucune séance —</option>';
+    if (prog && (!prog.seances || prog.seances.length === 0)) {
+      toast('⚠ Ce programme n\'a pas encore de séance. Ajoute-en dans l\'éditeur.');
+    }
     return;
   }
-  seanceSel.innerHTML = '<option value="">— Choisir —</option>' +
-    prog.seances.map((s, i) => `<option value="${i}">${s.nom || 'Séance ' + (i+1)}</option>`).join('');
+  // If only one session → auto-select it. Otherwise show all.
+  const autoSelect = prog.seances.length === 1 ? 0 : -1;
+  seanceSel.innerHTML = (prog.seances.length > 1 ? '<option value="">— Choisir une séance —</option>' : '') +
+    prog.seances.map((s, i) => {
+      const selected = i === autoSelect ? ' selected' : '';
+      return `<option value="${i}"${selected}>${s.nom || 'Séance ' + (i+1)}</option>`;
+    }).join('');
 
-  // Auto-fill title if empty
-  const nomInput = document.getElementById('cal-event-nom');
-  if (nomInput && !nomInput.value.trim() && prog.seances[0]) {
-    nomInput.value = prog.seances[0].nom || 'Séance';
+  // Auto-fill title from selected seance (or first) if empty
+  if (nomInput && !nomInput.value.trim()) {
+    const idx = autoSelect >= 0 ? autoSelect : 0;
+    nomInput.value = prog.seances[idx].nom || 'Séance';
   }
+
+  // Trigger title refresh when user picks a seance manually
+  seanceSel.onchange = () => {
+    const idx = +seanceSel.value;
+    if (!isNaN(idx) && prog.seances[idx] && nomInput) {
+      nomInput.value = prog.seances[idx].nom || 'Séance';
+    }
+  };
 }
 window.onCalEventProgramChange = onCalEventProgramChange;
 
@@ -3617,15 +3677,31 @@ async function saveCalEvent() {
   const type = document.getElementById('cal-event-type').value;
   const notes = document.getElementById('cal-event-notes').value;
   const programId = document.getElementById('cal-event-program')?.value || null;
-  const seanceIdx = document.getElementById('cal-event-seance')?.value;
+  const seanceIdxRaw = document.getElementById('cal-event-seance')?.value;
+  const seanceIdx = seanceIdxRaw !== undefined && seanceIdxRaw !== '' ? +seanceIdxRaw : null;
 
   const eventId = 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
   const event = {
     id: eventId, nom, date, heure, duree: +duree, type, notes,
-    programId, seanceIdx: seanceIdx !== undefined && seanceIdx !== '' ? +seanceIdx : null,
+    programId, seanceIdx,
     completed: false,
     createdAt: new Date().toISOString(),
   };
+
+  // If linked to a seance, embed a snapshot so the client can render it
+  // even if the program is modified later
+  if (programId && seanceIdx !== null) {
+    const prog = (S.programs || []).find(p => String(p.id) === String(programId));
+    const seance = prog && prog.seances ? prog.seances[seanceIdx] : null;
+    if (seance) {
+      event.seanceSnapshot = JSON.parse(JSON.stringify(seance));
+      event.programName = prog.nom;
+      // Auto-set nom from seance if user didn't customize
+      if (!nom || nom === seance.nom) {
+        event.nom = seance.nom || nom;
+      }
+    }
+  }
 
   if (!S.clientEvents) S.clientEvents = {};
   if (!S.clientEvents[clientId]) S.clientEvents[clientId] = [];
@@ -3641,7 +3717,7 @@ async function saveCalEvent() {
 
   closeModal('mo-cal-add');
   const t = CAL_TYPES[type] || CAL_TYPES.seance;
-  toast('✓ ' + t.emoji + ' ' + nom + ' ajouté');
+  toast('✓ ' + t.emoji + ' ' + event.nom + ' ajouté');
   renderClientCalendar(clientId);
 }
 
@@ -3732,7 +3808,7 @@ function openProgramEditor(pid) {
   document.getElementById('ed-prog-name').value = p.nom;
   const sel = document.getElementById('ed-prog-client');
   sel.innerHTML = '<option value="">— Modèle —</option>' +
-    S.clients.map(c=>`<option value="${c.id}"${p.client_id===c.id?' selected':''}>${displayName(c)}</option>`).join('');
+    S.clients.map(c=>`<option value="${c.id}"${String(p.client_id)===String(c.id)?' selected':''}>${displayName(c)}</option>`).join('');
 
   edRenderChips();
   edRenderExLib();
@@ -3766,13 +3842,63 @@ function edSaveName() {
   const p = S.programs.find(x=>x.id===ED.progId);
   if(p) p.nom = document.getElementById('ed-prog-name').value;
 }
-function edSaveClient() {
+async function edSaveClient() {
   const p = S.programs.find(x=>x.id===ED.progId);
-  if(p) p.client_id = +document.getElementById('ed-prog-client').value||null;
+  if(!p) return;
+
+  const oldClientId = p.client_id;
+  const rawClient = document.getElementById('ed-prog-client').value;
+  const newClientId = rawClient === '' ? null : (/^\d+$/.test(rawClient) ? +rawClient : rawClient);
+  p.client_id = newClientId;
+
+  // Sync to Firebase — remove from old client, add to new
+  if(typeof db !== 'undefined' && firebase.auth().currentUser){
+    // Remove from old if it was a real client
+    if(oldClientId){
+      const oldC = S.clients.find(x => String(x.id) === String(oldClientId));
+      if(oldC && !oldC._fake){
+        try {
+          await db.collection('clients').doc(String(oldClientId))
+            .collection('programs').doc(String(p.id))
+            .delete();
+        } catch(e){ console.warn('move prog FB err (old)', e); }
+      }
+    }
+    // Add to new if it's a real client
+    if(newClientId){
+      const newC = S.clients.find(x => String(x.id) === String(newClientId));
+      if(newC && !newC._fake){
+        try {
+          await db.collection('clients').doc(String(newClientId))
+            .collection('programs').doc(String(p.id))
+            .set(p);
+        } catch(e){ console.warn('move prog FB err (new)', e); }
+      }
+    }
+  }
 }
-function edPublish() {
+async function edPublish() {
   const p = S.programs.find(x=>x.id===ED.progId);
-  if(p) p.nom = document.getElementById('ed-prog-name').value;
+  if(!p) return;
+  p.nom = document.getElementById('ed-prog-name').value;
+
+  // Sync to Firebase if client is real
+  if(p.client_id && typeof db !== 'undefined' && firebase.auth().currentUser){
+    const c = S.clients.find(x => String(x.id) === String(p.client_id));
+    if(c && !c._fake){
+      try {
+        await db.collection('clients').doc(String(p.client_id))
+          .collection('programs').doc(String(p.id))
+          .set(p);
+        toast('✓ Programme publié à ' + displayName(c));
+        return;
+      } catch(e){
+        console.warn('edPublish FB err', e);
+        toast('⚠ Publié localement (erreur Firebase)');
+        return;
+      }
+    }
+  }
   toast('✓ Programme publié !');
 }
 
