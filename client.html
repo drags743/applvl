@@ -1551,14 +1551,14 @@ function renderSportDay(c, today, selected){
     </button>`;
   }).join('');
 
-  // Scroll to selected (after render)
+  // Scroll to selected
   setTimeout(() => {
     const activeBtn = row.querySelector('.day-pill.active');
     if(activeBtn) activeBtn.scrollIntoView({behavior:'auto', block:'nearest', inline:'center'});
   }, 0);
 
-  // Session content: only show for today's demo session (future dates = empty)
-  const session = sameDay(selected, today) ? APP.sessions[c.id] : null;
+  // Build session from events or fallback to demo session for today
+  const session = getSessionForDate(c, selected, today);
 
   const sessionsEl = document.getElementById('sport-sessions');
   if(session){
@@ -1572,6 +1572,41 @@ function renderSportDay(c, today, selected){
       <div style="font-size:12px;color:var(--txt3);margin-top:4px;">${selected.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</div>
     </div>`;
   }
+}
+
+/* Look up a session for a given date:
+   1. Check events (from coach calendar) with embedded seanceSnapshot
+   2. Fallback to APP.sessions[cid] only for TODAY */
+function getSessionForDate(c, date, today){
+  const dateStr = date.toISOString().slice(0, 10);
+  const events = (APP.clientEvents && APP.clientEvents[c.id]) || [];
+  const ev = events.find(e => e.date === dateStr && e.type === 'seance');
+  if(ev){
+    if(ev.seanceSnapshot){
+      // Build a session-like object the UI understands
+      return {
+        nom: ev.nom || ev.seanceSnapshot.nom,
+        sessionName: ev.nom,
+        eventId: ev.id,
+        programId: ev.programId,
+        seanceIdx: ev.seanceIdx,
+        heure: ev.heure,
+        duree: ev.duree,
+        completed: !!ev.completed,
+        exercises: ev.seanceSnapshot.exercises || [],
+      };
+    }
+    // Event exists but no snapshot — still show as planned
+    return {
+      nom: ev.nom, sessionName: ev.nom, eventId: ev.id,
+      heure: ev.heure, duree: ev.duree,
+      completed: !!ev.completed,
+      exercises: [],
+    };
+  }
+  // Fallback: today's demo session (backward compat for demo users)
+  if(sameDay(date, today)) return APP.sessions[c.id] || null;
+  return null;
 }
 
 function renderSportWeek(c, today){
@@ -1610,15 +1645,42 @@ function renderSportWeek(c, today){
   // Upcoming sessions section
   html += `<div style="padding:0 20px 8px;font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Séances à venir</div>`;
 
-  // For now we only have the demo session today — future sessions will come from Firestore
+  // Build upcoming list: check each day of the next 14 days for a session
   const upcoming = [];
+  const events = (APP.clientEvents && APP.clientEvents[c.id]) || [];
   for(let i=0; i<14; i++){
     const d = addDays(today, i);
-    if(i === 0 && demoSession){
-      upcoming.push({date:d, session:demoSession});
+    const session = getSessionForDate(c, d, today);
+    if(session && session.exercises && session.exercises.length > 0){
+      upcoming.push({date:d, session});
     }
-    // Later: push Firestore-planned sessions for that day
   }
+
+  // Also build a map of dates that have a session (for the week grid dot)
+  const sessionDates = new Set();
+  events.forEach(ev => {
+    if(ev.type === 'seance' && ev.date) sessionDates.add(ev.date);
+  });
+  if(demoSession) sessionDates.add(today.toISOString().slice(0,10));
+
+  // Re-build the week header now that we know which days have sessions
+  const newHeader = `<div style="padding:0 16px 16px;">
+    <div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:8px;">Semaine · ${weekLabel}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
+      ${weekDays.map(d => {
+        const isToday = sameDay(d, today);
+        const dKey = d.toISOString().slice(0,10);
+        const hasSession = sessionDates.has(dKey);
+        const dow = d.toLocaleDateString('fr-FR',{weekday:'narrow'}).toUpperCase();
+        return `<div onclick="selectedSportDate=new Date('${d.toISOString()}');sportViewMode='day';localStorage.setItem('applvl.sportView','day');renderSport();" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:10px;background:${isToday?'var(--red)':'var(--card)'};border:1px solid ${isToday?'var(--red-br)':'var(--brd)'};">
+          <div style="font-size:10px;color:${isToday?'#fff':'var(--txt3)'};font-weight:700;">${dow}</div>
+          <div style="font-family:'Montserrat',sans-serif;font-size:16px;font-weight:800;color:${isToday?'#fff':'var(--txt)'};">${d.getDate()}</div>
+          <div style="width:6px;height:6px;border-radius:50%;background:${hasSession ? (isToday?'#fff':'var(--red-br)') : 'transparent'};margin-top:2px;"></div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+  html = newHeader + `<div style="padding:0 20px 8px;font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;">Séances à venir</div>`;
 
   if(upcoming.length === 0){
     html += `<div style="padding:0 16px;"><div class="card" style="text-align:center;padding:30px 20px;">
@@ -1697,9 +1759,29 @@ function showSessionPreview(){
    SESSION FLOW
    ====================================================================== */
 function startSession(){
-  const session = APP.sessions[currentClient.id];
-  if(!session){ toast('Aucune séance à lancer'); return; }
-  activeSession = JSON.parse(JSON.stringify(session)); // deep clone so saves are isolated
+  const today = new Date();
+  // Use the session shown for the selected date (event-based if present, demo otherwise)
+  const session = getSessionForDate(currentClient, selectedSportDate || today, today);
+  if(!session || !session.exercises || session.exercises.length === 0){
+    toast('Aucune séance à lancer');
+    return;
+  }
+  activeSession = JSON.parse(JSON.stringify(session)); // deep clone
+  // Ensure every exercise has a series array
+  activeSession.exercises.forEach(ex => {
+    if(!ex.series || ex.series.length === 0){
+      const sets = ex.sets || (ex.setsData ? ex.setsData.length : 3);
+      ex.series = Array.from({length: sets}, (_, i) => {
+        const sd = ex.setsData && ex.setsData[i];
+        return {
+          kg: sd ? +sd.poids || 0 : (ex.poids_cible || 0),
+          reps: sd ? +sd.reps || 10 : (ex.reps || 10),
+          rest: sd ? +sd.repos || 90 : 90,
+          done: false
+        };
+      });
+    }
+  });
   activeExIdx = 0;
   activeSerIdx = 0;
   sessionStartTs = Date.now();
