@@ -193,11 +193,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg-base);color:var(--txt)
 .cal-week-day-col.today-col{background:rgba(192,57,43,0.04);}
 .cal-week-slot{height:52px;border-bottom:1px solid rgba(255,255,255,0.04);position:relative;}
 .cal-week-event{position:absolute;left:2px;right:2px;border-radius:5px;padding:3px 6px;font-size:10px;font-weight:600;cursor:pointer;overflow:hidden;z-index:2;line-height:1.3;}
-.cal-ev-seance{background:rgba(192,57,43,0.8);color:#fff;border-left:3px solid #e74c3c;}
+.cal-ev-seance{background:rgba(142,68,173,0.8);color:#fff;border-left:3px solid #8e44ad;}
 .cal-ev-rdv{background:rgba(52,152,219,0.8);color:#fff;border-left:3px solid #3498db;}
 .cal-ev-bilan{background:rgba(241,196,15,0.8);color:#111;border-left:3px solid #f39c12;}
 .cal-ev-note{background:rgba(149,165,166,0.6);color:#fff;border-left:3px solid #95a5a6;}
 .cal-ev-objectif{background:rgba(46,204,113,0.8);color:#fff;border-left:3px solid #2ecc71;}
+.cal-ev-done{background:rgba(200,241,53,0.85);color:#1a1a1a;border-left:3px solid #8fcf20;font-weight:600;}
+.cal-ev-missed{background:rgba(231,76,60,0.75);color:#fff;border-left:3px solid #c0392b;}
 .cal-add-slot{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;font-size:14px;font-weight:700;display:none;align-items:center;justify-content:center;cursor:pointer;z-index:3;}
 .cal-week-day-col:hover .cal-add-slot{display:flex;}
 /* ---- NUTRITION ---- */
@@ -1050,7 +1052,10 @@ textarea.fi{resize:vertical;}
       <div style="height:44px;border-bottom:1px solid var(--brd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;background:#111;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--txt3)" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
         <input class="ed-seance-input" id="ed-seance-name" type="text" placeholder="Nom de la s&#233;ance" onchange="edRenameSeance(this.value)">
-        <button class="ed-del-btn" onclick="edDeleteSeance()" style="margin-left:auto;">&#128465; Supprimer</button>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button class="ed-del-btn" onclick="edDuplicateSeance()" title="Dupliquer cette s&#233;ance" style="background:rgba(255,255,255,.05);">&#10696; Dupliquer</button>
+          <button class="ed-del-btn" onclick="edDeleteSeance()">&#128465; Supprimer</button>
+        </div>
       </div>
       <!-- Seance exercises -->
       <div id="ed-seance-content" style="flex:1;overflow-y:auto;padding:16px;min-height:0;"></div>
@@ -1375,13 +1380,31 @@ textarea.fi{resize:vertical;}
         </div>
         <div class="fg">
           <label class="fl">Type</label>
-          <select class="fi" id="cal-event-type">
+          <select class="fi" id="cal-event-type" onchange="onCalEventTypeChange()">
             <option value="seance">🏋️ Séance</option>
             <option value="rdv">📅 Rendez-vous</option>
             <option value="bilan">📋 Bilan</option>
             <option value="note">📝 Note</option>
             <option value="objectif">🎯 Objectif</option>
           </select>
+        </div>
+      </div>
+      <div id="cal-event-program-wrap" style="margin-bottom:14px;">
+        <label class="fl">Lier à une séance d'un programme (optionnel)</label>
+        <div class="fr" style="margin-top:4px;">
+          <div class="fg">
+            <select class="fi" id="cal-event-program" onchange="onCalEventProgramChange()">
+              <option value="">— Aucun programme —</option>
+            </select>
+          </div>
+          <div class="fg">
+            <select class="fi" id="cal-event-seance">
+              <option value="">— Aucune séance —</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--txt3);margin-top:6px;line-height:1.4;">
+          💡 Si tu lies une séance, l'élève verra tous les exercices, séries et poids cibles directement dans son app.
         </div>
       </div>
       <div class="fg" style="margin-bottom:14px;">
@@ -1529,6 +1552,7 @@ function attachClientsListener(){
     for(const c of fromCloud){
       attachClientCompletedListener(c.id);
       attachClientStatsListener(c.id);
+      attachClientEventsListener(c.id);
     }
     setStatus('🟢 Sync live', '#2ecc71');
   }, err => {
@@ -1551,6 +1575,34 @@ function attachClientCompletedListener(clientId){
         window.S.completedSessions[clientId] = arr;
       } catch(e){}
     }, err => { console.warn('completed listener err', err); });
+}
+
+// Per-client calendar events listener — keeps S.clientEvents in sync with Firestore
+let _unsubEvents = {};
+function attachClientEventsListener(clientId){
+  const key = String(clientId);
+  if(_unsubEvents[key]) return;
+  _unsubEvents[key] = db.collection('clients').doc(key)
+    .collection('events')
+    .onSnapshot(snap => {
+      try {
+        if(!window.S) return;
+        const arr = snap.docs.map(d => {
+          const x = d.data();
+          if(!x.id) x.id = d.id;
+          return x;
+        });
+        if(!window.S.clientEvents) window.S.clientEvents = {};
+        window.S.clientEvents[clientId] = arr;
+        // Re-render calendar if we're on this client's calendar view
+        try {
+          if(window.S.cur && String(window.S.cur.clientId) === key &&
+             document.querySelector('.tab.active[onclick*="calendrier"]')){
+            if(typeof renderClientCalendar === 'function') renderClientCalendar(clientId);
+          }
+        } catch(e){}
+      } catch(e){}
+    }, err => { console.warn('events listener err', err); });
 }
 
 function attachClientStatsListener(clientId){
@@ -2516,35 +2568,35 @@ function openCliRender(c, progs, np){
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
       <!-- Navigation mois -->
       <div style="display:flex;align-items:center;gap:6px;">
-        <button class="fb" onclick="clientCalNav(${c.id},-1)" style="padding:6px 10px;">←</button>
+        <button class="fb" onclick="clientCalNav('${c.id}',-1)" style="padding:6px 10px;">←</button>
         <span style="font-size:14px;font-weight:600;min-width:140px;text-align:center;" id="cal-month-lbl-${c.id}"></span>
-        <button class="fb" onclick="clientCalNav(${c.id},1)" style="padding:6px 10px;">→</button>
-        <button class="fb" onclick="clientCalGoToday(${c.id})" style="padding:6px 12px;font-size:11px;">Aujourd'hui</button>
+        <button class="fb" onclick="clientCalNav('${c.id}',1)" style="padding:6px 10px;">→</button>
+        <button class="fb" onclick="clientCalGoToday('${c.id}')" style="padding:6px 12px;font-size:11px;">Aujourd'hui</button>
       </div>
       <!-- Vue semaine/mois -->
       <div style="display:flex;gap:4px;margin-left:auto;">
-        <button class="fb active" id="cal-view-week-${c.id}" onclick="setCalView(${c.id},'week',this)" style="font-size:11px;padding:5px 12px;">Semaine</button>
-        <button class="fb" id="cal-view-month-${c.id}" onclick="setCalView(${c.id},'month',this)" style="font-size:11px;padding:5px 12px;">Mois</button>
+        <button class="fb active" id="cal-view-week-${c.id}" onclick="setCalView('${c.id}','week',this)" style="font-size:11px;padding:5px 12px;">Semaine</button>
+        <button class="fb" id="cal-view-month-${c.id}" onclick="setCalView('${c.id}','month',this)" style="font-size:11px;padding:5px 12px;">Mois</button>
       </div>
       <!-- Bouton Ajouter dropdown -->
       <div style="position:relative;">
-        <button class="btn btn-p" onclick="toggleCalAddMenu(${c.id})" style="display:flex;align-items:center;gap:6px;font-size:12px;">
+        <button class="btn btn-p" onclick="toggleCalAddMenu('${c.id}')" style="display:flex;align-items:center;gap:6px;font-size:12px;">
           + Ajouter <span style="font-size:10px;">▼</span>
         </button>
         <div id="cal-add-menu-${c.id}" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--bg-card);border:1px solid var(--brd);border-radius:var(--r);width:200px;z-index:100;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
-          <div onclick="openCalAddModal(${c.id},'seance')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
+          <div onclick="openCalAddModal('${c.id}','seance')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
             <span style="font-size:16px;">🏋️</span> Séance
           </div>
-          <div onclick="openCalAddModal(${c.id},'rdv')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
+          <div onclick="openCalAddModal('${c.id}','rdv')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
             <span style="font-size:16px;">📅</span> Rendez-vous
           </div>
-          <div onclick="openCalAddModal(${c.id},'bilan')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
+          <div onclick="openCalAddModal('${c.id}','bilan')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
             <span style="font-size:16px;">📋</span> Bilan
           </div>
-          <div onclick="openCalAddModal(${c.id},'note')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
+          <div onclick="openCalAddModal('${c.id}','note')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
             <span style="font-size:16px;">📝</span> Note / Rappel
           </div>
-          <div onclick="openCalAddModal(${c.id},'objectif')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
+          <div onclick="openCalAddModal('${c.id}','objectif')" style="padding:10px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
             <span style="font-size:16px;">🎯</span> Objectif
           </div>
         </div>
@@ -2684,7 +2736,8 @@ function switchTab(t,el){
       drawClientCharts(+el.dataset.drawCharts);
     });
     document.querySelectorAll('[data-render-cal]').forEach(el=>{
-      renderClientCalendar(+el.dataset.renderCal);
+      const raw = el.dataset.renderCal;
+      renderClientCalendar(/^\d+$/.test(raw) ? +raw : raw);
     });
     document.querySelectorAll('[data-cli-stats]').forEach(el=>{
       const raw = el.dataset.cliStats;
@@ -2772,14 +2825,138 @@ async function addClient(){
 function renderProgs(){
   document.getElementById('prog-grid').innerHTML=S.programs.map(p=>{
     const c=S.clients.find(x=>x.id===p.client_id);
-    return`<div class="pc" onclick="openProgramEditor(${p.id})" style="cursor:pointer;">
-      <div class="pn">${p.nom}</div>
-      <div class="pm"><span class="tag tag-r">${p.type}</span>${c?`<span class="tag">${displayName(c)}</span>`:'<span class="tag">Modèle</span>'}</div>
-      <div class="pb"><div class="pf" style="width:${p.progress}%"></div></div>
-      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);padding-left:10px;"><span>Progression</span><span>${p.progress}% — Éditer →</span></div>
+    const nSeances = (p.seances || []).length;
+    return`<div class="pc" style="position:relative;">
+      <div onclick="openProgramEditor(${p.id})" style="cursor:pointer;">
+        <div class="pn">${p.nom}</div>
+        <div class="pm"><span class="tag tag-r">${p.type}</span>${c?`<span class="tag">${displayName(c)}</span>`:'<span class="tag">Modèle</span>'}</div>
+        <div class="pb"><div class="pf" style="width:${p.progress}%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--txt3);padding-left:10px;">
+          <span>${nSeances} séance${nSeances>1?'s':''}</span>
+          <span>${p.progress}% — Éditer →</span>
+        </div>
+      </div>
+      <div style="position:absolute;top:10px;right:10px;display:flex;gap:4px;">
+        <button title="Dupliquer vers un élève" onclick="event.stopPropagation();openDuplicateProgramModal(${p.id})" style="background:rgba(255,255,255,.05);border:1px solid var(--brd);color:var(--txt2);width:26px;height:26px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;" onmouseover="this.style.color='var(--red-br)';this.style.borderColor='var(--red-br)';" onmouseout="this.style.color='var(--txt2)';this.style.borderColor='var(--brd)';">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        </button>
+        <button title="Supprimer" onclick="event.stopPropagation();deleteProgram(${p.id})" style="background:rgba(255,255,255,.05);border:1px solid var(--brd);color:var(--txt2);width:26px;height:26px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s;" onmouseover="this.style.color='var(--red-br)';this.style.borderColor='var(--red-br)';this.style.background='rgba(192,57,43,.08)';" onmouseout="this.style.color='var(--txt2)';this.style.borderColor='var(--brd)';this.style.background='rgba(255,255,255,.05)';">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
     </div>`;
-  }).join('');
+  }).join('') || '<div style="padding:40px;text-align:center;color:var(--txt3);">Aucun programme. Créez-en un avec le bouton +.</div>';
 }
+
+/* ==========================================================================
+   PROGRAM MANAGEMENT — duplicate / delete / assign
+   ========================================================================== */
+function openDuplicateProgramModal(progId){
+  const prog = S.programs.find(p => p.id === progId);
+  if(!prog) return;
+  const clients = (S.clients || []).filter(c => c.status !== 'ended' && c.status !== 'blocked');
+  const opts = clients.map(c => `<option value="${c.id}">${displayName(c)} — ${c.objectif || ''}</option>`).join('');
+
+  const html = `
+    <div id="dup-prog-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeDupProgModal()">
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:16px;max-width:460px;width:100%;padding:24px;font-family:'DM Sans',sans-serif;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div>
+            <div style="font-family:'Montserrat',sans-serif;font-size:17px;font-weight:800;">Dupliquer le programme</div>
+            <div style="font-size:12px;color:var(--txt3);margin-top:3px;">${prog.nom}</div>
+          </div>
+          <button onclick="closeDupProgModal()" style="background:transparent;border:none;color:var(--txt3);font-size:22px;cursor:pointer;">✕</button>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:6px;">Destination</label>
+          <select id="dup-prog-target" class="fs" style="width:100%;">
+            <option value="">— Modèle (aucun élève) —</option>
+            ${opts}
+          </select>
+        </div>
+        <div style="margin-bottom:18px;">
+          <label style="display:block;font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:6px;">Nouveau nom (optionnel)</label>
+          <input id="dup-prog-name" class="fi" style="width:100%;" placeholder="${prog.nom} — copie">
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+          <button onclick="closeDupProgModal()" style="padding:10px 18px;border-radius:8px;border:1px solid var(--brd);background:transparent;color:var(--txt2);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>
+          <button onclick="executeDuplicateProgram(${progId})" class="btn btn-p" style="padding:10px 22px;">Dupliquer</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+window.openDuplicateProgramModal = openDuplicateProgramModal;
+
+function closeDupProgModal(){
+  const m = document.getElementById('dup-prog-modal');
+  if(m) m.remove();
+}
+window.closeDupProgModal = closeDupProgModal;
+
+async function executeDuplicateProgram(progId){
+  const prog = S.programs.find(p => p.id === progId);
+  if(!prog) return;
+  const rawTarget = document.getElementById('dup-prog-target').value;
+  const targetClientId = rawTarget === '' ? null : (/^\d+$/.test(rawTarget) ? +rawTarget : rawTarget);
+  const newName = document.getElementById('dup-prog-name').value.trim() || (prog.nom + ' — copie');
+
+  // Deep clone
+  const clone = JSON.parse(JSON.stringify(prog));
+  clone.id = Date.now();
+  clone.nom = newName;
+  clone.client_id = targetClientId;
+  clone.progress = 0;
+  clone.debut = new Date().toISOString().split('T')[0];
+  clone.fin = null;
+  // Re-id all seances
+  (clone.seances || []).forEach((s, idx) => {
+    s.id = `s${clone.id}-${idx+1}`;
+    s.done = false;
+    (s.exercises || []).forEach(ex => { ex.results = []; });
+  });
+
+  S.programs.push(clone);
+
+  // Sync to Firebase for the target client if real
+  const target = targetClientId ? S.clients.find(x => String(x.id) === String(targetClientId)) : null;
+  if(target && !target._fake && typeof db !== 'undefined' && firebase.auth().currentUser){
+    try {
+      await db.collection('clients').doc(String(targetClientId))
+        .collection('programs').doc(String(clone.id))
+        .set(clone);
+    } catch(e){ console.warn('duplicate prog FB err', e); }
+  }
+
+  closeDupProgModal();
+  renderProgs();
+  toast('✓ Programme dupliqué' + (target ? ' pour ' + displayName(target) : ''));
+}
+window.executeDuplicateProgram = executeDuplicateProgram;
+
+async function deleteProgram(progId){
+  const prog = S.programs.find(p => p.id === progId);
+  if(!prog) return;
+  if(!confirm(`Supprimer le programme "${prog.nom}" ?\n\nCette action est irréversible.`)) return;
+
+  S.programs = S.programs.filter(p => p.id !== progId);
+
+  // Remove from Firebase if linked to a real client
+  if(prog.client_id){
+    const c = S.clients.find(x => String(x.id) === String(prog.client_id));
+    if(c && !c._fake && typeof db !== 'undefined' && firebase.auth().currentUser){
+      try {
+        await db.collection('clients').doc(String(prog.client_id))
+          .collection('programs').doc(String(prog.id))
+          .delete();
+      } catch(e){ console.warn('delete prog FB err', e); }
+    }
+  }
+
+  renderProgs();
+  toast('✓ Programme supprimé');
+}
+window.deleteProgram = deleteProgram;
 
 function filterProg(f,btn){document.querySelectorAll('#page-sport .fb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
 
@@ -3249,7 +3426,7 @@ function renderCalWeek(clientId) {
     const dateStr = date.toISOString().split('T')[0];
     const dayEvents = events.filter(e => e.date === dateStr);
 
-    bodyHtml += `<div class="cal-week-day-col ${isToday?'today-col':''}" onclick="quickAddCalEvent(${clientId},'${dateStr}')">`;
+    bodyHtml += `<div class="cal-week-day-col ${isToday?'today-col':''}" onclick="quickAddCalEvent('${clientId}','${dateStr}')">`;
     hours.forEach((h,hi) => {
       // Find events starting in this slot
       const slotEvents = dayEvents.filter(e => {
@@ -3262,13 +3439,17 @@ function renderCalWeek(clientId) {
         const type = CAL_TYPES[ev.type] || CAL_TYPES.seance;
         const dur = (+ev.duree||60);
         const height = Math.max(22, Math.round(dur / 60 * 52));
-        bodyHtml += `<div class="${type.cls} cal-week-event" style="height:${height}px;" onclick="event.stopPropagation();openCalEventDetail(${clientId},${evIdx})">
-          ${type.emoji} ${ev.nom}${dur>45?'<br><span style="font-size:9px;opacity:.7;">'+ev.heure+' · '+dur+'min</span>':''}
+        // Use Ekklo-style colors: green if completed, violet if future, red if overdue
+        const isPast = new Date(ev.date) < new Date(today);
+        const cls = ev.completed ? 'cal-ev-done' : (isPast && ev.type === 'seance' ? 'cal-ev-missed' : type.cls);
+        const badge = ev.completed ? ' ✓' : (isPast && ev.type === 'seance' ? ' ⚠' : '');
+        bodyHtml += `<div class="${cls} cal-week-event" style="height:${height}px;" onclick="event.stopPropagation();openCalEventDetail('${clientId}',${evIdx})">
+          ${type.emoji} ${ev.nom}${badge}${dur>45?'<br><span style="font-size:9px;opacity:.7;">'+ev.heure+' · '+dur+'min</span>':''}
         </div>`;
       });
       bodyHtml += `</div>`;
     });
-    bodyHtml += `<div class="cal-add-slot" onclick="event.stopPropagation();openCalAddModal(${clientId},'seance','${dateStr}')">+</div>`;
+    bodyHtml += `<div class="cal-add-slot" onclick="event.stopPropagation();openCalAddModal('${clientId}','seance','${dateStr}')">+</div>`;
     bodyHtml += '</div>';
   }
   bodyHtml += '</div>';
@@ -3283,6 +3464,7 @@ function renderCalMonth(clientId) {
   const {year, month} = st;
   const days = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
   const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
   const firstDay = new Date(year, month, 1).getDay();
   const offset = firstDay === 0 ? 6 : firstDay - 1;
   const daysInMonth = new Date(year, month+1, 0).getDate();
@@ -3294,11 +3476,14 @@ function renderCalMonth(clientId) {
     const isToday = today.getDate()===d && today.getMonth()===month && today.getFullYear()===year;
     const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dayEvs = events.filter(e => e.date === dateStr);
-    html += `<div class="cal-d ${isToday?'today':''}" onclick="openCalAddModal(${clientId},'seance','${dateStr}')">
+    html += `<div class="cal-d ${isToday?'today':''}" onclick="openCalAddModal('${clientId}','seance','${dateStr}')">
       <div class="cal-dn" style="${isToday?'color:var(--red-br)':''}">${d}</div>
       ${dayEvs.slice(0,3).map(ev => {
         const type = CAL_TYPES[ev.type]||CAL_TYPES.seance;
-        return `<div class="cal-ev ${type.cls}" onclick="event.stopPropagation();openCalEventDetail(${clientId},${events.indexOf(ev)})" style="cursor:pointer;">${type.emoji} ${ev.nom}</div>`;
+        const isPastEv = new Date(ev.date) < new Date(todayStr);
+        const cls = ev.completed ? 'cal-ev-done' : (isPastEv && ev.type === 'seance' ? 'cal-ev-missed' : type.cls);
+        const badge = ev.completed ? ' ✓' : (isPastEv && ev.type === 'seance' ? ' ⚠' : '');
+        return `<div class="cal-ev ${cls}" onclick="event.stopPropagation();openCalEventDetail('${clientId}',${events.indexOf(ev)})" style="cursor:pointer;">${type.emoji} ${ev.nom}${badge}</div>`;
       }).join('')}
       ${dayEvs.length>3?`<div class="cal-ev" style="background:var(--bg-input);">+${dayEvs.length-3} autres</div>`:''}
     </div>`;
@@ -3365,17 +3550,63 @@ function openCalAddModal(clientId, type, dateStr) {
   document.getElementById('cal-event-nom').value = '';
   document.getElementById('cal-event-notes').value = '';
   document.getElementById('cal-event-heure').value = '09:00';
+
+  // Populate program dropdown with this client's programs
+  const progSel = document.getElementById('cal-event-program');
+  if (progSel) {
+    const clientProgs = (S.programs || []).filter(p => String(p.client_id) === String(clientId));
+    progSel.innerHTML = '<option value="">— Aucun programme —</option>' +
+      clientProgs.map(p => `<option value="${p.id}">${p.nom}</option>`).join('');
+  }
+  // Reset seance dropdown
+  const seanceSel = document.getElementById('cal-event-seance');
+  if (seanceSel) seanceSel.innerHTML = '<option value="">— Aucune séance —</option>';
+
+  // Show/hide program wrap depending on type
+  onCalEventTypeChange();
+
   // Close dropdown if open
   const menu = document.getElementById('cal-add-menu-' + clientId);
   if (menu) menu.style.display = 'none';
   openModal('mo-cal-add');
 }
 
+function onCalEventTypeChange() {
+  const type = document.getElementById('cal-event-type')?.value;
+  const wrap = document.getElementById('cal-event-program-wrap');
+  if (wrap) wrap.style.display = type === 'seance' ? 'block' : 'none';
+}
+window.onCalEventTypeChange = onCalEventTypeChange;
+
+function onCalEventProgramChange() {
+  const progId = document.getElementById('cal-event-program')?.value;
+  const seanceSel = document.getElementById('cal-event-seance');
+  if (!seanceSel) return;
+  if (!progId) {
+    seanceSel.innerHTML = '<option value="">— Aucune séance —</option>';
+    return;
+  }
+  const prog = (S.programs || []).find(p => String(p.id) === String(progId));
+  if (!prog || !prog.seances) {
+    seanceSel.innerHTML = '<option value="">— Aucune séance —</option>';
+    return;
+  }
+  seanceSel.innerHTML = '<option value="">— Choisir —</option>' +
+    prog.seances.map((s, i) => `<option value="${i}">${s.nom || 'Séance ' + (i+1)}</option>`).join('');
+
+  // Auto-fill title if empty
+  const nomInput = document.getElementById('cal-event-nom');
+  if (nomInput && !nomInput.value.trim() && prog.seances[0]) {
+    nomInput.value = prog.seances[0].nom || 'Séance';
+  }
+}
+window.onCalEventProgramChange = onCalEventProgramChange;
+
 function quickAddCalEvent(clientId, dateStr) {
   openCalAddModal(clientId, 'seance', dateStr);
 }
 
-function saveCalEvent() {
+async function saveCalEvent() {
   const clientId = _calCurrentClientId;
   if (!clientId) return;
   const nom = document.getElementById('cal-event-nom').value.trim();
@@ -3385,9 +3616,29 @@ function saveCalEvent() {
   const duree = document.getElementById('cal-event-duree').value;
   const type = document.getElementById('cal-event-type').value;
   const notes = document.getElementById('cal-event-notes').value;
+  const programId = document.getElementById('cal-event-program')?.value || null;
+  const seanceIdx = document.getElementById('cal-event-seance')?.value;
+
+  const eventId = 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
+  const event = {
+    id: eventId, nom, date, heure, duree: +duree, type, notes,
+    programId, seanceIdx: seanceIdx !== undefined && seanceIdx !== '' ? +seanceIdx : null,
+    completed: false,
+    createdAt: new Date().toISOString(),
+  };
+
   if (!S.clientEvents) S.clientEvents = {};
   if (!S.clientEvents[clientId]) S.clientEvents[clientId] = [];
-  S.clientEvents[clientId].push({nom, date, heure, duree: +duree, type, notes});
+  S.clientEvents[clientId].push(event);
+
+  // Sync to Firebase for real clients (makes event appear in client app)
+  const c = S.clients.find(x => String(x.id) === String(clientId));
+  if (c && !c._fake && typeof db !== 'undefined' && firebase.auth().currentUser) {
+    try {
+      await db.collection('clients').doc(String(clientId)).collection('events').doc(eventId).set(event);
+    } catch (e) { console.warn('saveCalEvent FB err', e); }
+  }
+
   closeModal('mo-cal-add');
   const t = CAL_TYPES[type] || CAL_TYPES.seance;
   toast('✓ ' + t.emoji + ' ' + nom + ' ajouté');
@@ -3424,10 +3675,21 @@ function openCalEventDetail(clientId, evIdx) {
   openModal('mo-cal-event');
 }
 
-function deleteCalEvent() {
+async function deleteCalEvent() {
   if (_calCurrentClientId === null || _calCurrentEventIdx === null) return;
-  S.clientEvents[_calCurrentClientId].splice(_calCurrentEventIdx, 1);
-  renderClientCalendar(_calCurrentClientId);
+  const clientId = _calCurrentClientId;
+  const ev = S.clientEvents[clientId][_calCurrentEventIdx];
+  S.clientEvents[clientId].splice(_calCurrentEventIdx, 1);
+
+  // Sync delete to Firebase
+  const c = S.clients.find(x => String(x.id) === String(clientId));
+  if (c && !c._fake && ev && ev.id && typeof db !== 'undefined' && firebase.auth().currentUser) {
+    try {
+      await db.collection('clients').doc(String(clientId)).collection('events').doc(ev.id).delete();
+    } catch (e) { console.warn('deleteCalEvent FB err', e); }
+  }
+
+  renderClientCalendar(clientId);
   toast('✓ Événement supprimé');
 }
 
@@ -3572,6 +3834,24 @@ function edAddSeance() {
   ED.seanceIdx=p.seances.length-1;
   edRenderTabs(); edRenderSeance();
 }
+
+function edDuplicateSeance() {
+  const p=S.programs.find(x=>x.id===ED.progId);
+  if(!p || !p.seances[ED.seanceIdx]) return;
+  const src = p.seances[ED.seanceIdx];
+  const clone = JSON.parse(JSON.stringify(src));
+  clone.id = 's' + Date.now();
+  clone.nom = (src.nom || 'Séance') + ' (copie)';
+  clone.done = false;
+  (clone.exercises || []).forEach(ex => { if(ex) ex.results = []; });
+  // Insert right after the current seance
+  p.seances.splice(ED.seanceIdx + 1, 0, clone);
+  ED.seanceIdx = ED.seanceIdx + 1;
+  edRenderTabs();
+  edRenderSeance();
+  toast('✓ Séance dupliquée');
+}
+window.edDuplicateSeance = edDuplicateSeance;
 
 function edRenameSeance(name) {
   const p=S.programs.find(x=>x.id===ED.progId);
