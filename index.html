@@ -1717,6 +1717,36 @@ window.fbSavePrograms = async function(){
   } catch(e){ console.warn('fbSavePrograms err', e); }
 };
 
+// Debounced coach-wide persist — call after ANY mutation
+let _saveProgsTimer = null;
+window.persistPrograms = function(){
+  if(_saveProgsTimer) clearTimeout(_saveProgsTimer);
+  _saveProgsTimer = setTimeout(() => {
+    if(typeof window.fbSavePrograms === 'function') window.fbSavePrograms();
+  }, 600);
+};
+
+let _saveNutTimer = null;
+window.persistNutrition = function(){
+  if(_saveNutTimer) clearTimeout(_saveNutTimer);
+  _saveNutTimer = setTimeout(() => {
+    if(typeof window.fbSaveNutPlans === 'function') window.fbSaveNutPlans();
+  }, 600);
+};
+
+let _saveExsTimer = null;
+window.persistExercises = function(){
+  if(_saveExsTimer) clearTimeout(_saveExsTimer);
+  _saveExsTimer = setTimeout(async () => {
+    try {
+      await db.collection('coach').doc('exercises').set({
+        list: window.S.exercises || [],
+        _ts: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } catch(e){ console.warn('persistExercises err', e); }
+  }, 600);
+};
+
 window.fbSaveNutPlans = async function(){
   try {
     await db.collection('coach').doc('nutrition').set({
@@ -1799,6 +1829,20 @@ window.fbLoad = async function(){
     } else if(window.S.nutPlans && window.S.nutPlans.length){
       await window.fbSaveNutPlans();
     }
+    // Exercises (custom ones created by the coach)
+    try {
+      const exSnap = await db.collection('coach').doc('exercises').get();
+      if(exSnap.exists && Array.isArray(exSnap.data().list)){
+        // Merge: keep defaults + override with saved custom ones
+        const savedById = new Map(exSnap.data().list.map(e => [String(e.id), e]));
+        window.S.exercises = window.S.exercises.map(e => savedById.get(String(e.id)) || e);
+        // Add any saved exercises that aren't in defaults
+        const defaultIds = new Set(window.S.exercises.map(e => String(e.id)));
+        exSnap.data().list.forEach(e => {
+          if(!defaultIds.has(String(e.id))) window.S.exercises.push(e);
+        });
+      }
+    } catch(e){ console.warn('load exercises err', e); }
     // Clients + attach realtime listeners
     attachClientsListener();
 
@@ -2917,6 +2961,7 @@ async function executeDuplicateProgram(progId){
   });
 
   S.programs.push(clone);
+  persistPrograms();
 
   // Sync to Firebase for the target client if real
   const target = targetClientId ? S.clients.find(x => String(x.id) === String(targetClientId)) : null;
@@ -2940,6 +2985,7 @@ async function deleteProgram(progId){
   if(!confirm(`Supprimer le programme "${prog.nom}" ?\n\nCette action est irréversible.`)) return;
 
   S.programs = S.programs.filter(p => p.id !== progId);
+  persistPrograms();
 
   // Remove from Firebase if linked to a real client
   if(prog.client_id){
@@ -2979,6 +3025,7 @@ async function addProgram(){
     seances: []
   };
   S.programs.push(prog);
+  persistPrograms();
   closeModal('mo-prog');
 
   // Sync to Firebase for real clients so the program lives in clients/{uid}/programs
@@ -3013,6 +3060,7 @@ function setMus(m){S.cur.muscleFilter=m;renderExs(exFilter,m);}
 function addExercise(){
   const n=document.getElementById('ex-nom').value.trim();if(!n){toast('Donnez un nom');return;}
   S.exercises.push({id:Date.now(),nom:n.toUpperCase(),muscle:document.getElementById('ex-mus').value,equip:document.getElementById('ex-eq').value,icon:'💪'});
+  persistExercises();
   closeModal('mo-ex');toast('✓ Exercice ajouté');renderExs();
 }
 
@@ -3025,7 +3073,10 @@ function renderNut(){
 }
 function addNutPlan(){
   const n=document.getElementById('np-nom').value.trim();if(!n){toast('Donnez un nom');return;}
-  S.nutPlans.push({id:Date.now(),nom:n,client_id:+document.getElementById('np-cli').value||null,kcal:+document.getElementById('np-kcal').value||2000,obj:document.getElementById('np-obj').value,prot:+document.getElementById('np-p').value||100,gluc:+document.getElementById('np-g').value||200,lip:+document.getElementById('np-l').value||70});
+  const rawCli = document.getElementById('np-cli').value;
+  const client_id = rawCli === '' ? null : (/^\d+$/.test(rawCli) ? +rawCli : rawCli);
+  S.nutPlans.push({id:Date.now(),nom:n,client_id,kcal:+document.getElementById('np-kcal').value||2000,obj:document.getElementById('np-obj').value,prot:+document.getElementById('np-p').value||100,gluc:+document.getElementById('np-g').value||200,lip:+document.getElementById('np-l').value||70});
+  persistNutrition();
   closeModal('mo-nut');toast('✓ Plan nutritionnel créé');renderNut();
 }
 
@@ -3876,11 +3927,13 @@ async function edSaveClient() {
       }
     }
   }
+  persistPrograms();
 }
 async function edPublish() {
   const p = S.programs.find(x=>x.id===ED.progId);
   if(!p) return;
   p.nom = document.getElementById('ed-prog-name').value;
+  persistPrograms();  // always save the coach-wide snapshot
 
   // Sync to Firebase if client is real
   if(p.client_id && typeof db !== 'undefined' && firebase.auth().currentUser){
@@ -3959,6 +4012,7 @@ function edAddSeance() {
   p.seances.push({id:'s'+Date.now(), nom:'Séance '+(p.seances.length+1), exercises:[]});
   ED.seanceIdx=p.seances.length-1;
   edRenderTabs(); edRenderSeance();
+  persistPrograms();
 }
 
 function edDuplicateSeance() {
@@ -3975,20 +4029,21 @@ function edDuplicateSeance() {
   ED.seanceIdx = ED.seanceIdx + 1;
   edRenderTabs();
   edRenderSeance();
+  persistPrograms();
   toast('✓ Séance dupliquée');
 }
 window.edDuplicateSeance = edDuplicateSeance;
 
 function edRenameSeance(name) {
   const p=S.programs.find(x=>x.id===ED.progId);
-  if(p && p.seances[ED.seanceIdx]) { p.seances[ED.seanceIdx].nom=name; edRenderTabs(); }
+  if(p && p.seances[ED.seanceIdx]) { p.seances[ED.seanceIdx].nom=name; edRenderTabs(); persistPrograms(); }
 }
 
 function edDeleteSeance() {
   const p=S.programs.find(x=>x.id===ED.progId);
   if(!p||p.seances.length<=1){toast('Un programme doit avoir au moins une séance');return;}
   if(!confirm('Supprimer cette séance ?')) return;
-  p.seances.splice(ED.seanceIdx,1);
+  p.seances.splice(ED.seanceIdx,1); persistPrograms();
   ED.seanceIdx=Math.min(ED.seanceIdx,p.seances.length-1);
   edRenderTabs(); edRenderSeance();
 }
@@ -4093,6 +4148,7 @@ function edAddEx(exId){
   const s=p.seances[ED.seanceIdx];
   const ei=s.exercises.length-1;
   setTimeout(()=>edToggle(ED.seanceIdx,ei),30);
+  persistPrograms();
   toast('✓ '+ex.nom+' ajouté');
 }
 
@@ -4100,6 +4156,7 @@ function edRemEx(si,ei){
   const p=S.programs.find(x=>x.id===ED.progId);
   if(!p) return;
   p.seances[si].exercises.splice(ei,1);
+  persistPrograms();
   edRenderSeance();
 }
 
@@ -4108,6 +4165,7 @@ function edDupeEx(si,ei){
   if(!p) return;
   const ex=JSON.parse(JSON.stringify(p.seances[si].exercises[ei]));
   p.seances[si].exercises.splice(ei+1,0,ex);
+  persistPrograms();
   edRenderSeance();
   toast('✓ Exercice dupliqué');
 }
@@ -4119,6 +4177,7 @@ function edMoveEx(si,ei,dir){
   const ni=ei+dir;
   if(ni<0||ni>=exs.length) return;
   [exs[ei],exs[ni]]=[exs[ni],exs[ei]];
+  persistPrograms();
   edRenderSeance();
 }
 
@@ -4130,6 +4189,7 @@ function edUpdSet(si,ei,seti,field,val){
   e.setsData[seti][field]=field==='type'?val:+val;
   if(field==='reps') e.reps=+val;
   if(field==='poids') e.poids_cible=+val;
+  persistPrograms();
 }
 
 function edAddSet(si,ei){
@@ -4139,6 +4199,7 @@ function edAddSet(si,ei){
   const last=e.setsData[e.setsData.length-1]||{type:'Normal',reps:10,poids:0,repos:60};
   e.setsData.push({...last});
   e.sets=e.setsData.length;
+  persistPrograms();
   edRenderSeance();
   setTimeout(()=>{
     const b=document.getElementById(`sets-${si}-${ei}`);
@@ -4155,6 +4216,7 @@ function edDelSet(si,ei,seti){
   if(e.setsData.length<=1){toast('Au moins une série est requise');return;}
   e.setsData.splice(seti,1);
   e.sets=e.setsData.length;
+  persistPrograms();
   edRenderSeance();
   setTimeout(()=>{
     const b=document.getElementById(`sets-${si}-${ei}`);
