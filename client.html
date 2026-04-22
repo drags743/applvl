@@ -182,6 +182,94 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .val-card-val small{font-size:11px;color:var(--txt3);font-weight:500;}
 .val-card-edit{position:absolute;top:8px;right:8px;color:var(--red-br);}
 
+/* Expandable series section on exo screen */
+.series-expand{margin:12px 16px 0;background:#111;border:1px solid rgba(255,255,255,.06);border-radius:10px;overflow:hidden;}
+.series-expand-head{padding:9px 12px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
+.series-expand-head:hover{background:rgba(255,255,255,.02);}
+.series-expand-head-left{display:flex;align-items:center;gap:7px;}
+.series-expand-head-label{font-size:10px;font-weight:600;color:rgba(255,255,255,.7);letter-spacing:.04em;text-transform:uppercase;}
+.series-expand-badge{background:rgba(231,76,60,.15);color:#e74c3c;padding:0 6px;border-radius:8px;font-size:9px;font-weight:600;line-height:16px;min-width:16px;text-align:center;}
+.series-expand-chev{transition:transform .2s ease;}
+.series-expand.open .series-expand-chev{transform:rotate(180deg);}
+.series-expand-body{display:none;border-top:1px solid rgba(255,255,255,.04);}
+.series-expand.open .series-expand-body{display:block;}
+.series-row-inline{padding:8px 11px;display:grid;grid-template-columns:20px 26px 1fr 10px 1fr;gap:8px;align-items:center;border-bottom:1px solid rgba(255,255,255,.04);}
+.series-row-inline:last-child{border-bottom:none;}
+.series-row-inline.done{opacity:.85;}
+.series-row-inline.current{background:rgba(231,76,60,.04);}
+.series-row-inline.pending{opacity:.45;}
+.series-row-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.series-row-icon.done{background:rgba(46,204,113,.9);color:#0a0a0a;}
+.series-row-icon.current{border:1.5px solid #e74c3c;}
+.series-row-icon.current::after{content:"";width:7px;height:7px;border-radius:50%;background:#e74c3c;}
+.series-row-icon.pending{border:1.5px solid rgba(255,255,255,.2);}
+.series-row-label{font-size:10px;font-weight:600;color:rgba(255,255,255,.5);}
+.series-row-label.current{color:#e74c3c;font-weight:700;}
+.series-row-input-wrap{display:flex;align-items:baseline;gap:3px;padding:3px 6px;border-radius:5px;border:1px solid transparent;border-bottom:1px dashed rgba(255,255,255,.12);transition:.15s;}
+.series-row-input-wrap:focus-within,.series-row-input-wrap.current{background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.35);}
+.series-row-input-wrap.pending{border-bottom:1px dashed rgba(255,255,255,.1);}
+.series-row-input{background:transparent;border:none;color:#f5f5f0;font-weight:600;font-size:13px;width:32px;text-align:right;outline:none;font-family:inherit;-moz-appearance:textfield;padding:0;}
+.series-row-input::-webkit-outer-spin-button,.series-row-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.series-row-input.pending{color:rgba(255,255,255,.55);font-weight:500;}
+.series-row-unit{font-size:9px;color:rgba(255,255,255,.4);}
+.series-row-sep{font-size:10px;color:rgba(255,255,255,.3);text-align:center;}
+
+/* Rest time pill in exo-tags */
+.rest-pill{background:var(--card2);color:var(--txt2);border:1px solid rgba(255,255,255,.08);padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;display:inline-flex;align-items:center;gap:3px;margin-left:4px;}
+
+/* ========= Nutrition: inline expandable meals ========= */
+.meal-card-v2{background:#111;border:1px solid rgba(255,255,255,.06);border-radius:12px;margin:0 16px 8px;overflow:hidden;transition:border-color .15s;}
+.meal-card-v2.expanded{border-color:rgba(231,76,60,.3);}
+.meal-head{padding:11px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
+.meal-card-v2.expanded .meal-head{background:rgba(231,76,60,.06);}
+.meal-head-left{display:flex;align-items:center;gap:9px;min-width:0;}
+.meal-head-emoji{font-size:18px;flex-shrink:0;}
+.meal-title{font-weight:700;font-size:13px;}
+.meal-card-v2.empty .meal-title{font-weight:600;}
+.meal-sub{font-size:10px;color:var(--txt3);margin-top:1px;}
+.meal-chev{transition:transform .2s ease;flex-shrink:0;}
+.meal-card-v2.expanded .meal-chev{transform:rotate(180deg);}
+.meal-body{display:none;}
+.meal-card-v2.expanded .meal-body{display:block;border-top:1px solid rgba(255,255,255,.04);}
+.food-row-inline{padding:9px 13px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(255,255,255,.04);}
+.food-row-inline:last-child{border-bottom:none;}
+.food-row-emoji{font-size:18px;flex-shrink:0;}
+.food-row-info{flex:1;min-width:0;}
+.food-row-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.food-row-meta{font-size:10px;color:var(--txt3);margin-top:1px;}
+.food-row-btn{background:transparent;border:none;color:rgba(255,255,255,.4);padding:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;}
+.food-row-btn:hover{color:var(--red-br);}
+.meal-actions-row{display:flex;gap:7px;padding:10px 13px;}
+.meal-add-btn{flex:1;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.35);color:var(--red-br);border-radius:8px;padding:9px;display:flex;align-items:center;justify-content:center;gap:5px;font-weight:600;font-size:11px;cursor:pointer;font-family:inherit;}
+.meal-template-btn{background:transparent;border:1px solid rgba(255,255,255,.08);color:var(--txt2);border-radius:8px;padding:9px 11px;display:flex;align-items:center;justify-content:center;gap:5px;font-weight:500;font-size:11px;cursor:pointer;font-family:inherit;}
+.meal-empty-hint{text-align:center;padding:20px 13px;color:var(--txt3);font-size:11px;}
+
+/* ========= Quantity sheet (bottom sheet) ========= */
+.qty-sheet-bg{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);display:none;align-items:flex-end;justify-content:center;}
+.qty-sheet-bg.active{display:flex;}
+.qty-sheet{width:100%;max-width:480px;background:#0f0f0f;border-top-left-radius:18px;border-top-right-radius:18px;border-top:1px solid rgba(255,255,255,.08);padding:14px 16px 18px;animation:slideUp .25s cubic-bezier(.2,.8,.3,1.2);}
+.qty-sheet-handle{width:40px;height:3px;background:rgba(255,255,255,.2);border-radius:2px;margin:0 auto 14px;}
+.qty-sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.qty-sheet-icon{width:44px;height:44px;background:rgba(231,76,60,.12);border:1px solid rgba(231,76,60,.3);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.qty-sheet-title{font-weight:700;font-size:14px;}
+.qty-sheet-sub{font-size:10px;color:var(--txt3);margin-top:2px;}
+.qty-panel{background:#161616;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:14px;margin-bottom:12px;}
+.qty-panel-label{font-size:10px;color:var(--txt3);font-weight:600;letter-spacing:.05em;text-transform:uppercase;text-align:center;margin-bottom:8px;}
+.qty-stepper-row{display:flex;align-items:center;gap:8px;justify-content:center;}
+.qty-step-btn{width:38px;height:38px;border-radius:10px;background:#111;border:1px solid rgba(255,255,255,.08);color:var(--txt);font-weight:600;font-size:16px;cursor:pointer;font-family:inherit;}
+.qty-step-btn:hover{background:rgba(231,76,60,.08);border-color:rgba(231,76,60,.3);}
+.qty-value-wrap{flex:1;text-align:center;}
+.qty-value{font-family:'Montserrat',sans-serif;font-weight:800;font-size:28px;letter-spacing:-.5px;font-variant-numeric:tabular-nums;background:transparent;border:none;color:var(--txt);text-align:center;width:90px;outline:none;font-family:inherit;}
+.qty-value-unit{font-size:14px;color:var(--txt3);font-weight:500;margin-left:4px;}
+.qty-presets{margin-top:10px;display:flex;gap:5px;justify-content:center;flex-wrap:wrap;}
+.qty-preset{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:var(--txt2);border-radius:6px;padding:4px 9px;font-size:10px;font-weight:500;cursor:pointer;font-family:inherit;}
+.qty-preset.active{background:rgba(231,76,60,.12);border-color:rgba(231,76,60,.35);color:var(--red-br);font-weight:600;}
+.qty-macros-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.qty-macro-cell{text-align:center;}
+.qty-macro-val{font-weight:700;font-size:15px;}
+.qty-macro-val.kcal{color:var(--red-br);}
+.qty-macro-unit{font-size:9px;color:var(--txt3);font-weight:500;margin-top:1px;}
+
 /* Edit modal */
 .modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:center;justify-content:center;padding:20px;}
 .modal-bg.active{display:flex;}
@@ -401,16 +489,19 @@ const fbDb = firebase.firestore();
   </div>
 
   <!-- Illustration exercice -->
-  <div style="margin:0 16px 16px;background:var(--card);border:1px dashed rgba(255,255,255,.15);border-radius:14px;height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;position:relative;">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--red-br)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.8;">
-      <rect x="3" y="3" width="18" height="18" rx="2"/>
-      <circle cx="9" cy="9" r="2"/>
-      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-    </svg>
-    <div style="text-align:center;padding:0 20px;">
-      <div style="font-size:11px;font-weight:600;color:var(--txt2);">Photo de l'exercice</div>
-      <div style="font-size:10px;color:var(--txt3);margin-top:3px;">Depuis la bibliothèque de Timothy</div>
+  <div id="exo-image-wrapper" style="margin:0 16px 16px;background:var(--card);border:1px dashed rgba(255,255,255,.15);border-radius:14px;height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;position:relative;overflow:hidden;">
+    <div id="exo-image-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--red-br)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:.8;">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <circle cx="9" cy="9" r="2"/>
+        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+      </svg>
+      <div style="text-align:center;padding:0 20px;">
+        <div style="font-size:11px;font-weight:600;color:var(--txt2);">Photo de l'exercice</div>
+        <div style="font-size:10px;color:var(--txt3);margin-top:3px;">Depuis la bibliothèque de Timothy</div>
+      </div>
     </div>
+    <img id="exo-image" alt="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:13px;" />
   </div>
 
   <!-- Nom + tags + chrono série -->
@@ -449,6 +540,18 @@ const fbDb = firebase.firestore();
     </div>
   </div>
 
+  <!-- Expandable "Toutes les séries" section -->
+  <div class="series-expand" id="exo-series-expand">
+    <div class="series-expand-head" onclick="toggleSeriesExpand()">
+      <div class="series-expand-head-left">
+        <span class="series-expand-head-label">Toutes les séries</span>
+        <span class="series-expand-badge" id="exo-series-count">—</span>
+      </div>
+      <svg class="series-expand-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="series-expand-body" id="exo-series-rows"></div>
+  </div>
+
   <!-- Info dernière séance -->
   <div id="exo-last-session" style="margin:14px 16px;padding:10px 12px;background:var(--red-gl);border:1px solid rgba(192,57,43,.25);border-radius:10px;font-size:11px;color:var(--txt2);display:none;"></div>
 
@@ -457,7 +560,7 @@ const fbDb = firebase.firestore();
     <button class="btn" style="width:50px;height:50px;justify-content:center;border-radius:50%;padding:0;" onclick="prevSeries()">←</button>
     <button class="btn btn-p" style="flex:1;justify-content:center;padding:16px;font-size:14px;font-weight:700;" onclick="validateAndRest()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      Valider &amp; lancer le repos
+      <span id="exo-validate-label">Valider &amp; lancer le repos</span>
     </button>
     <button class="btn" style="width:50px;height:50px;justify-content:center;border-radius:50%;padding:0;" onclick="skipSeries()">→</button>
   </div>
@@ -467,12 +570,14 @@ const fbDb = firebase.firestore();
 <div class="screen screen-session" id="screen-repos">
   <!-- Top bar -->
   <div style="padding:14px 16px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
-    <button class="btn btn-sm btn-ghost" onclick="skipRest()">↷ Passer</button>
+    <button class="icon-btn" onclick="confirmExitSession()" aria-label="Retour">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    </button>
     <div style="background:var(--card);padding:6px 14px;border-radius:20px;border:1px solid var(--brd);font-size:12px;">
       <span style="color:var(--txt3);">Durée séance</span>
       <strong style="margin-left:6px;font-family:'Montserrat',sans-serif;" id="repos-duration">00:00</strong>
     </div>
-    <button class="icon-btn" onclick="nav('series')" aria-label="Vue liste">
+    <button class="icon-btn" onclick="nav('exo')" aria-label="Vue exercice">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
     <button class="icon-btn" onclick="confirmFinishSession()" aria-label="Terminer la séance" title="Terminer la séance" style="background:rgba(46,204,113,.12);border-color:rgba(46,204,113,.3);color:var(--green);">
@@ -480,35 +585,45 @@ const fbDb = firebase.firestore();
     </button>
   </div>
 
-  <!-- À venir -->
-  <div style="padding:0 16px 12px;">
-    <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;">À venir</div>
-    <div style="background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:10px;display:flex;gap:10px;align-items:center;">
-      <div style="width:50px;height:50px;background:var(--card2);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--red-br)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11v11h-11z"/><path d="M2 12h4.5"/><path d="M17.5 12H22"/><path d="M4 9v6"/><path d="M20 9v6"/></svg>
-      </div>
-      <div style="flex:1;">
-        <div style="font-size:13px;font-weight:700;" id="next-name">—</div>
-        <div style="font-size:11px;color:var(--txt3);margin-top:2px;" id="next-info">—</div>
-      </div>
+  <!-- Timer centré -->
+  <div style="text-align:center;padding:24px 20px 14px;">
+    <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:.2em;text-transform:uppercase;">Repos en cours</div>
+    <div id="timer-display" style="margin-top:6px;font-family:'Montserrat',sans-serif;font-weight:500;font-size:60px;letter-spacing:-1px;line-height:1;font-variant-numeric:tabular-nums;">01:00</div>
+    <div class="timer-bar" style="margin:14px auto 6px;max-width:200px;"><div id="timer-bar-fill" style="width:0%;"></div></div>
+    <div id="timer-elapsed" style="font-size:11px;color:var(--txt3);">0 s / 60 s</div>
+  </div>
+
+  <!-- Prochaine série -->
+  <div style="margin:0 16px 14px;background:var(--card);border:1px solid var(--brd);border-radius:10px;padding:11px 13px;">
+    <div style="font-size:9px;font-weight:600;color:var(--txt3);letter-spacing:.1em;text-transform:uppercase;">Prochaine</div>
+    <div style="margin-top:5px;">
+      <div style="font-weight:600;font-size:13px;" id="next-name">—</div>
+      <div style="margin-top:3px;font-size:11px;color:var(--txt2);" id="next-info">—</div>
     </div>
   </div>
 
-  <!-- Gros timer -->
-  <div style="text-align:center;padding:20px 20px 10px;">
-    <div style="font-size:12px;color:var(--txt2);text-transform:uppercase;letter-spacing:.2em;margin-bottom:14px;">Temps de repos</div>
-    <div class="timer-huge" id="timer-display">01:00</div>
-    <div class="timer-bar"><div id="timer-bar-fill" style="width:0%;"></div></div>
-    <div style="font-size:12px;color:var(--txt3);" id="timer-elapsed">0 s / 60 s</div>
+  <!-- Bouton primary: passer à la série suivante (débloque si la personne a son propre timer) -->
+  <div style="padding:0 16px 10px;">
+    <button onclick="skipRest()" style="width:100%;background:var(--red);border:1px solid var(--red-br);color:#fff;border-radius:10px;padding:13px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span>Passer à la série suivante</span>
+    </button>
   </div>
 
-  <!-- Controls -->
-  <div style="display:flex;gap:16px;justify-content:center;padding:10px 16px 14px;">
-    <button onclick="adjustRest(-15)" style="width:50px;height:50px;border-radius:50%;background:var(--card);border:1px solid var(--brd);color:var(--txt);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">-15s</button>
-    <button onclick="toggleRest()" id="rest-toggle-btn" style="width:60px;height:60px;border-radius:50%;background:var(--red);border:none;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 6px 16px rgba(192,57,43,.4);display:flex;align-items:center;justify-content:center;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+  <!-- Controls secondaires -->
+  <div style="display:flex;gap:7px;padding:0 16px 14px;">
+    <button onclick="adjustRest(-15)" style="flex:1;background:var(--card);border:1px solid var(--brd);color:var(--txt);border-radius:8px;padding:9px;display:flex;align-items:center;justify-content:center;gap:4px;font-weight:500;font-size:11px;cursor:pointer;font-family:inherit;opacity:.85;">
+      <span style="font-size:14px;">−</span>
+      <span>15s</span>
     </button>
-    <button onclick="adjustRest(15)" style="width:50px;height:50px;border-radius:50%;background:var(--card);border:1px solid var(--brd);color:var(--txt);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">+15s</button>
+    <button onclick="toggleRest()" id="rest-toggle-btn" style="flex:1;background:var(--card);border:1px solid var(--brd);color:var(--txt);border-radius:8px;padding:9px;display:flex;align-items:center;justify-content:center;gap:5px;font-weight:500;font-size:11px;cursor:pointer;font-family:inherit;opacity:.85;">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      <span>Pause</span>
+    </button>
+    <button onclick="adjustRest(15)" style="flex:1;background:var(--card);border:1px solid var(--brd);color:var(--txt);border-radius:8px;padding:9px;display:flex;align-items:center;justify-content:center;gap:4px;font-weight:500;font-size:11px;cursor:pointer;font-family:inherit;opacity:.85;">
+      <span style="font-size:14px;">+</span>
+      <span>15s</span>
+    </button>
   </div>
 
   <!-- Info background -->
@@ -794,6 +909,61 @@ const fbDb = firebase.firestore();
     </div>
     <input type="text" id="food-search" placeholder="Rechercher…" oninput="onFoodSearch()" style="background:var(--input);border:1px solid var(--brd);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--txt);font-family:inherit;outline:none;margin-bottom:12px;">
     <div id="food-list" style="overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px;"></div>
+  </div>
+</div>
+
+<!-- ========== QUANTITY SHEET ========== -->
+<div class="qty-sheet-bg" id="qty-sheet-bg">
+  <div class="qty-sheet">
+    <div class="qty-sheet-handle"></div>
+    <div class="qty-sheet-head">
+      <div class="qty-sheet-icon" id="qty-emoji">🍴</div>
+      <div style="flex:1;min-width:0;">
+        <div class="qty-sheet-title" id="qty-name">—</div>
+        <div class="qty-sheet-sub" id="qty-base">Valeurs pour 100 g</div>
+      </div>
+      <button onclick="closeQuantitySheet()" style="background:transparent;border:none;color:var(--txt3);padding:6px;cursor:pointer;font-family:inherit;" aria-label="Fermer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="qty-panel">
+      <div class="qty-panel-label">Quantité</div>
+      <div class="qty-stepper-row">
+        <button class="qty-step-btn" onclick="qtyAdjust(-10)" aria-label="Moins 10">−</button>
+        <div class="qty-value-wrap">
+          <input id="qty-value" type="number" inputmode="numeric" min="1" max="9999" step="1" class="qty-value" value="30" onchange="qtyInputChange()" onfocus="this.select()" />
+          <span class="qty-value-unit" id="qty-unit">g</span>
+        </div>
+        <button class="qty-step-btn" onclick="qtyAdjust(10)" aria-label="Plus 10">+</button>
+      </div>
+      <div class="qty-presets" id="qty-presets"></div>
+    </div>
+    <div class="qty-panel">
+      <div class="qty-panel-label" id="qty-macros-label">Pour 30 g</div>
+      <div class="qty-macros-grid">
+        <div class="qty-macro-cell"><div class="qty-macro-val kcal" id="qty-m-kcal">0</div><div class="qty-macro-unit">kcal</div></div>
+        <div class="qty-macro-cell"><div class="qty-macro-val" id="qty-m-prot">0</div><div class="qty-macro-unit">prot</div></div>
+        <div class="qty-macro-cell"><div class="qty-macro-val" id="qty-m-gluc">0</div><div class="qty-macro-unit">gluc</div></div>
+        <div class="qty-macro-cell"><div class="qty-macro-val" id="qty-m-lip">0</div><div class="qty-macro-unit">lip</div></div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-block" onclick="closeQuantitySheet()" style="flex:1;">Annuler</button>
+      <button class="btn btn-p btn-block" id="qty-confirm-btn" onclick="confirmQuantity()" style="flex:1.6;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span id="qty-confirm-label">Ajouter</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== TEMPLATE MENU MODAL ========== -->
+<div class="modal-bg" id="tpl-menu-modal">
+  <div class="modal" style="max-width:360px;padding:20px;">
+    <div class="modal-title" id="tpl-menu-title">Templates</div>
+    <div class="modal-sub" id="tpl-menu-sub">—</div>
+    <div id="tpl-menu-body"></div>
+    <button class="btn btn-block" onclick="closeTplMenu()" style="margin-top:8px;">Fermer</button>
   </div>
 </div>
 
@@ -1575,7 +1745,7 @@ function buildWeightChart(hist){
    RENDER — SPORT
    ====================================================================== */
 // Sport view mode: 'day' (picker de jours) or 'week' (aperçu semaine + séances à venir)
-let sportViewMode = localStorage.getItem('applvl.sportView') || 'week';
+let sportViewMode = localStorage.getItem('applvl.sportView') || 'day';
 
 function toggleSportView(){
   sportViewMode = (sportViewMode === 'day') ? 'week' : 'day';
@@ -1844,7 +2014,7 @@ function buildSessionCard(session){
   const subtitle = session.type || session.jour || '';
   const duration = (typeof session.dureeTarget === 'number' && session.dureeTarget > 0)
     ? session.dureeTarget
-    : (typeof session.duree === 'number' && session.duree > 0 ? session.duree : calculateSessionDuration(session));
+    : calculateSessionDuration(session);
   const exoCount = (session.exercises || []).length;
 
   // Tag + background depending on state
@@ -1972,24 +2142,28 @@ function showSessionPreview(){
   document.body.appendChild(ov);
 }
 
-/* Allow student to re-open a finished session to fix a typo / forgotten set.
-   Loads the most recent completed record for this session and re-enters the
-   session screen with all values pre-filled. When re-finished, overwrites the
-   previous record instead of creating a new one. */
+/* Open a simple recap modal showing what the student logged for each series.
+   Each kg/reps cell is editable in place. On save, persist back to localStorage
+   and Firestore (overwriting the original record), then re-render the day card. */
 function modifyCompletedSession(){
   const today = new Date();
   const session = getSessionForDate(currentClient, selectedSportDate || today, today);
   if(!session){ toast('Séance introuvable'); return; }
 
   // Load most recent completed record for this event (or session by name)
-  let record = null;
+  let record = null, recordIdx = -1;
+  let arr = [];
   try {
-    const arr = JSON.parse(localStorage.getItem('applvl.completed.' + currentClient.id) || '[]');
+    arr = JSON.parse(localStorage.getItem('applvl.completed.' + currentClient.id) || '[]');
     if(session.eventId){
-      record = [...arr].reverse().find(r => r.eventId === session.eventId);
+      for(let i = arr.length - 1; i >= 0; i--){
+        if(arr[i].eventId === session.eventId){ record = arr[i]; recordIdx = i; break; }
+      }
     }
     if(!record){
-      record = [...arr].reverse().find(r => r.sessionName === session.nom);
+      for(let i = arr.length - 1; i >= 0; i--){
+        if(arr[i].sessionName === session.nom){ record = arr[i]; recordIdx = i; break; }
+      }
     }
   } catch(e){}
 
@@ -1998,47 +2172,131 @@ function modifyCompletedSession(){
     return;
   }
 
-  if(!confirm('Modifier ta séance terminée ?\n\nTes répétitions et poids seront pré-remplis.')) return;
+  // Build the editable recap UI
+  const exos = (record.exercises || []).filter(e => e && Array.isArray(e.series) && e.series.length > 0);
+  if(exos.length === 0){ toast('Séance vide'); return; }
 
-  // Rebuild activeSession using record data (kg/reps already filled, all done)
-  activeSession = {
-    nom: session.nom,
-    sessionName: session.nom,
-    eventId: session.eventId || null,
-    programId: session.programId || null,
-    seanceIdx: session.seanceIdx,
-    isModification: true,
-    previousDocId: record.docId || record._docId || null,
-    exercises: (record.exercises || []).map(rex => {
-      const origEx = session.exercises.find(e => e.nom === rex.nom) || {};
-      return {
-        nom: rex.nom,
-        muscle: origEx.muscle || rex.muscle || '',
-        equip: origEx.equip || rex.equip || '',
-        series: (rex.series || []).map(s => ({
-          kg: s.kg || 0,
-          reps: s.reps || 0,
-          rest: s.rest || 90,
-          kg_target: s.kg_target ?? s.kg ?? 0,
-          reps_target: s.reps_target ?? s.reps ?? 10,
-          done: !!s.done
-        }))
-      };
-    })
-  };
-  activeSession.exercises = activeSession.exercises.filter(ex => ex && Array.isArray(ex.series) && ex.series.length > 0);
-  if(activeSession.exercises.length === 0){
-    toast('Erreur : séance vide');
-    activeSession = null;
-    return;
+  const exosHtml = exos.map((rex, exIdx) => {
+    const origEx = (session.exercises || []).find(e => e.nom === rex.nom) || {};
+    const exoNom = rex.nom || origEx.nom || ('Exercice ' + (exIdx + 1));
+    const muscleStr = (rex.muscle || origEx.muscle) || '';
+    const equipStr = (rex.equip || origEx.equip || origEx.equipment) || '';
+    const subParts = [];
+    if(muscleStr) subParts.push(muscleStr);
+    if(equipStr) subParts.push(equipStr);
+
+    const seriesHtml = rex.series.map((s, sIdx) => `
+      <div style="display:grid;grid-template-columns:34px 1fr 1fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--brd);">
+        <div style="font-family:'Montserrat',sans-serif;font-size:12px;font-weight:800;color:var(--txt3);">S${sIdx+1}</div>
+        <div>
+          <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:3px;">Charge</div>
+          <input type="number" inputmode="decimal" step="0.5" value="${s.kg||0}" data-ex="${exIdx}" data-ser="${sIdx}" data-field="kg" class="mod-edit-input" style="width:100%;background:var(--card2);border:1px solid var(--brd);border-radius:8px;padding:8px 10px;color:var(--txt);font-family:'Montserrat',sans-serif;font-size:14px;font-weight:700;" />
+          <div style="font-size:9px;color:var(--txt3);margin-top:2px;">kg</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:3px;">Reps</div>
+          <input type="number" inputmode="numeric" step="1" min="0" value="${s.reps||0}" data-ex="${exIdx}" data-ser="${sIdx}" data-field="reps" class="mod-edit-input" style="width:100%;background:var(--card2);border:1px solid var(--brd);border-radius:8px;padding:8px 10px;color:var(--txt);font-family:'Montserrat',sans-serif;font-size:14px;font-weight:700;" />
+          <div style="font-size:9px;color:var(--txt3);margin-top:2px;">reps</div>
+        </div>
+      </div>`).join('');
+
+    return `<div style="padding:14px 0;border-bottom:1px solid var(--brd);">
+      <div style="font-family:'Montserrat',sans-serif;font-size:14px;font-weight:800;line-height:1.2;">${exIdx+1}. ${exoNom}</div>
+      ${subParts.length ? `<div style="font-size:11px;color:var(--txt3);margin-top:3px;">${subParts.join(' · ')}</div>` : ''}
+      <div style="margin-top:8px;">${seriesHtml}</div>
+    </div>`;
+  }).join('');
+
+  const ov = document.createElement('div');
+  ov.id = 'modify-recap-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);';
+  ov.innerHTML = `
+    <div style="width:100%;max-width:480px;background:var(--bg);border-top-left-radius:18px;border-top-right-radius:18px;max-height:90vh;display:flex;flex-direction:column;animation:slideUp .25s cubic-bezier(.2,.8,.3,1.2);">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'Montserrat',sans-serif;font-size:18px;font-weight:800;line-height:1.1;">Modifier la séance</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:3px;">${session.nom||'Séance'} · Ajuste ce que tu as réellement fait</div>
+        </div>
+        <button onclick="document.getElementById('modify-recap-overlay').remove()" style="background:transparent;border:none;color:var(--txt2);cursor:pointer;padding:8px;font-size:20px;line-height:1;">×</button>
+      </div>
+      <div style="overflow-y:auto;padding:0 20px;-webkit-overflow-scrolling:touch;flex:1;">
+        ${exosHtml}
+      </div>
+      <div style="padding:14px 20px 18px;border-top:1px solid var(--brd);display:flex;gap:8px;background:var(--bg);">
+        <button class="btn" style="flex:1;justify-content:center;" onclick="document.getElementById('modify-recap-overlay').remove()">Annuler</button>
+        <button class="btn btn-p" style="flex:1.5;justify-content:center;" onclick="saveModifiedSession(${recordIdx})">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Sauvegarder
+        </button>
+      </div>
+    </div>`;
+  ov.addEventListener('click', (e) => { if(e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+/* Read all the edited inputs in the modify-recap modal and persist them to
+   localStorage + Firestore. Recompute totals (totalKg, totalReps). */
+function saveModifiedSession(recordIdx){
+  const ov = document.getElementById('modify-recap-overlay');
+  if(!ov) return;
+  let arr;
+  try { arr = JSON.parse(localStorage.getItem('applvl.completed.' + currentClient.id) || '[]'); } catch(e){ arr = []; }
+  const record = arr[recordIdx];
+  if(!record){ toast('Erreur : enregistrement perdu'); ov.remove(); return; }
+
+  // Apply each input value back to the record
+  const inputs = ov.querySelectorAll('.mod-edit-input');
+  inputs.forEach(inp => {
+    const exI = +inp.dataset.ex;
+    const sI = +inp.dataset.ser;
+    const field = inp.dataset.field;
+    const raw = (inp.value || '').toString().replace(',', '.');
+    const n = parseFloat(raw);
+    if(isNaN(n) || n < 0) return;
+    if(record.exercises && record.exercises[exI] && record.exercises[exI].series && record.exercises[exI].series[sI]){
+      record.exercises[exI].series[sI][field] = field === 'reps' ? Math.round(n) : n;
+      // also update _done aliases used by some readers
+      if(field === 'kg') record.exercises[exI].series[sI].kg_done = n;
+      if(field === 'reps') record.exercises[exI].series[sI].reps_done = Math.round(n);
+    }
+  });
+
+  // Recompute totals
+  let totalKg = 0, totalReps = 0, seriesDone = 0, seriesTotal = 0;
+  (record.exercises || []).forEach(ex => {
+    (ex.series || []).forEach(s => {
+      seriesTotal++;
+      if(s.done){ seriesDone++; totalKg += (+s.kg || 0) * (+s.reps || 0); totalReps += (+s.reps || 0); }
+    });
+  });
+  record.totalKg = Math.round(totalKg);
+  record.totalReps = totalReps;
+  record.seriesDone = seriesDone;
+  record.seriesTotal = seriesTotal;
+  record._lastEdited = Date.now();
+
+  // Persist to localStorage
+  arr[recordIdx] = record;
+  try { localStorage.setItem('applvl.completed.' + currentClient.id, JSON.stringify(arr)); } catch(e){}
+
+  // Push to Firestore (overwrite the same docId)
+  if(typeof isFirebaseAuthed === 'function' && isFirebaseAuthed()){
+    try {
+      const uid = fbAuth.currentUser.uid;
+      const docId = record.docId || record._docId;
+      if(docId && typeof fbDb !== 'undefined'){
+        fbDb.collection('clients').doc(uid).collection('completed').doc(docId)
+          .set(record, {merge: true})
+          .catch(e => console.warn('save modified session FB err', e));
+      }
+    } catch(e){ console.warn('save modified session err', e); }
   }
-  activeExIdx = 0;
-  activeSerIdx = 0;
-  sessionStartTs = Date.now();
-  startDurationTimer();
-  renderExo();
-  toast('Modifie tes séries puis termine à nouveau');
-  nav('exo');
+
+  ov.remove();
+  toast('✓ Séance mise à jour');
+  // Re-render so the UI reflects new values
+  try { renderSport(); } catch(e){}
+  try { renderAccueil(); } catch(e){}
 }
 
 /* Resume the in-progress session (when student tapped "Reprendre la séance" from the day view) */
@@ -2125,20 +2383,117 @@ function renderExo(){
   if(!activeSession) return;
   const ex = activeSession.exercises[activeExIdx];
   const ser = ex.series[activeSerIdx];
-  document.getElementById('exo-name').textContent = `${activeExIdx+1}. ${ex.nom}`;
+  const exoNom = ex.nom || ('Exercice ' + (activeExIdx + 1));
+  const exoMuscle = ex.muscle || '';
+  const exoEquip = ex.equip || ex.equipment || '';
+  document.getElementById('exo-name').textContent = `${activeExIdx+1}. ${exoNom}`;
   document.getElementById('exo-tags').innerHTML = `
     <span class="tag tag-neutral">Série ${activeSerIdx+1} / ${ex.series.length}</span>
-    <span class="tag tag-red" style="margin-left:4px;">${ex.muscle}</span>
-    <span class="tag tag-neutral" style="margin-left:4px;">${ex.equipment}</span>`;
+    ${exoMuscle ? `<span class="tag tag-red" style="margin-left:4px;">${exoMuscle}</span>` : ''}
+    ${exoEquip ? `<span class="tag tag-neutral" style="margin-left:4px;">${exoEquip}</span>` : ''}
+    <span class="rest-pill">
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M9 2h6"/></svg>
+      Repos ${ser.rest}s
+    </span>`;
   document.getElementById('exo-kg').textContent = ser.kg;
   document.getElementById('exo-reps').textContent = ser.reps;
   document.getElementById('exo-rest').textContent = ser.rest;
+
+  // Image: show if ex.img exists, else fallback placeholder
+  const imgEl = document.getElementById('exo-image');
+  const phEl = document.getElementById('exo-image-placeholder');
+  if(imgEl && phEl){
+    if(ex.img){
+      imgEl.src = ex.img;
+      imgEl.style.display = 'block';
+      phEl.style.display = 'none';
+      imgEl.onerror = () => { imgEl.style.display = 'none'; phEl.style.display = 'flex'; };
+    } else {
+      imgEl.style.display = 'none';
+      phEl.style.display = 'flex';
+    }
+  }
+
+  // Render "Toutes les séries" expandable list
+  const countEl = document.getElementById('exo-series-count');
+  if(countEl) countEl.textContent = ex.series.length;
+  renderSeriesExpand();
 
   const lastEl = document.getElementById('exo-last-session');
   if(ex.last){
     lastEl.style.display = 'block';
     lastEl.innerHTML = `<strong style="color:var(--red-br);">Dernière séance :</strong> ${ex.last.reps} reps à ${ex.last.kg} kg`;
   } else { lastEl.style.display = 'none'; }
+
+  // Dynamic button label
+  const labelEl = document.getElementById('exo-validate-label');
+  if(labelEl){
+    const isLastSer = activeSerIdx === ex.series.length - 1;
+    const hasNextEx = activeExIdx + 1 < activeSession.exercises.length;
+    if(isLastSer && hasNextEx){
+      labelEl.textContent = 'Valider & passer à l\u2019exercice suivant';
+    } else if(isLastSer && !hasNextEx){
+      labelEl.textContent = 'Valider la dernière série';
+    } else {
+      labelEl.textContent = 'Valider & lancer le repos';
+    }
+  }
+}
+
+/* Toggle the expanded/collapsed state of the series section */
+function toggleSeriesExpand(){
+  const el = document.getElementById('exo-series-expand');
+  if(!el) return;
+  el.classList.toggle('open');
+}
+
+/* Render the inline series list rows. Each kg and reps is an editable input. */
+function renderSeriesExpand(){
+  if(!activeSession) return;
+  const ex = activeSession.exercises[activeExIdx];
+  const rowsEl = document.getElementById('exo-series-rows');
+  if(!rowsEl) return;
+  rowsEl.innerHTML = ex.series.map((s, i) => {
+    let state;
+    if(s.done) state = 'done';
+    else if(i === activeSerIdx) state = 'current';
+    else state = 'pending';
+    const iconSvg = state === 'done'
+      ? '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+      : '';
+    return `<div class="series-row-inline ${state}">
+      <div class="series-row-icon ${state}">${iconSvg}</div>
+      <div class="series-row-label ${state === 'current' ? 'current' : ''}">S${i+1}</div>
+      <div class="series-row-input-wrap ${state}">
+        <input type="number" inputmode="decimal" step="0.5" min="0" class="series-row-input ${state}" value="${s.kg}" onchange="updateSeriesInline(${i},'kg',this.value)" onfocus="this.select()" />
+        <span class="series-row-unit">kg</span>
+      </div>
+      <div class="series-row-sep">×</div>
+      <div class="series-row-input-wrap ${state}">
+        <input type="number" inputmode="numeric" step="1" min="0" class="series-row-input ${state}" value="${s.reps}" onchange="updateSeriesInline(${i},'reps',this.value)" onfocus="this.select()" />
+        <span class="series-row-unit">reps</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* Called when a kg or reps input changes in the expanded series list.
+   Persists the new value, re-renders the current series' value cards, and auto-saves. */
+function updateSeriesInline(serIdx, field, rawVal){
+  if(!activeSession) return;
+  const ex = activeSession.exercises[activeExIdx];
+  const ser = ex.series[serIdx];
+  if(!ser) return;
+  const n = parseFloat(String(rawVal).replace(',', '.'));
+  if(isNaN(n) || n < 0) return;
+  const val = field === 'reps' ? Math.round(n) : n;
+  ser[field] = val;
+  // If it's the currently active series, sync the top value cards too
+  if(serIdx === activeSerIdx){
+    document.getElementById('exo-' + field).textContent = val;
+  }
+  buzz(15);
+  autoSaveSession();
 }
 
 function validateAndRest(){
@@ -2770,8 +3125,14 @@ function openWeightEdit(){
 function renderSeriesView(){
   if(!activeSession) return;
   const ex = activeSession.exercises[activeExIdx];
-  document.getElementById('series-name').textContent = ex.nom;
-  document.getElementById('series-sub').textContent = `Exercice ${activeExIdx+1} · ${ex.muscle} · ${ex.equipment}`;
+  const exoNom = ex.nom || ('Exercice ' + (activeExIdx + 1));
+  const exoMuscle = ex.muscle || '';
+  const exoEquip = ex.equip || ex.equipment || '';
+  document.getElementById('series-name').textContent = exoNom;
+  const subParts = [`Exercice ${activeExIdx+1}`];
+  if(exoMuscle) subParts.push(exoMuscle);
+  if(exoEquip) subParts.push(exoEquip);
+  document.getElementById('series-sub').textContent = subParts.join(' · ');
 
   const rowsEl = document.getElementById('series-rows');
   rowsEl.innerHTML = ex.series.map((s,i) => {
@@ -2808,12 +3169,12 @@ function renderSeriesView(){
           </div>`).join('');
         return `<div class="exo-accordion" id="acc-${realIdx}">
           <div class="exo-accordion-head" onclick="toggleExoAccordion(${realIdx})">
-            <div style="width:40px;height:40px;background:var(--card2);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--red-br)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11v11h-11z"/><path d="M2 12h4.5"/><path d="M17.5 12H22"/><path d="M4 9v6"/><path d="M20 9v6"/></svg>
+            <div style="width:40px;height:40px;background:var(--card2);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+              ${e.img ? `<img src="${e.img}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" /><svg style="display:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--red-br)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11v11h-11z"/><path d="M2 12h4.5"/><path d="M17.5 12H22"/><path d="M4 9v6"/><path d="M20 9v6"/></svg>` : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--red-br)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11v11h-11z"/><path d="M2 12h4.5"/><path d="M17.5 12H22"/><path d="M4 9v6"/><path d="M20 9v6"/></svg>`}
             </div>
             <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:700;">${realIdx+1}. ${e.nom}</div>
-              <div style="font-size:11px;color:var(--txt3);margin-top:2px;">${e.series.length} séries · ${e.muscle} · ${e.equipment}</div>
+              <div style="font-size:13px;font-weight:700;">${realIdx+1}. ${e.nom || ('Exercice ' + (realIdx+1))}</div>
+              <div style="font-size:11px;color:var(--txt3);margin-top:2px;">${e.series.length} série${e.series.length>1?'s':''}${e.muscle?' · '+e.muscle:''}${(e.equip||e.equipment)?' · '+(e.equip||e.equipment):''}</div>
             </div>
             <span class="arrow" style="font-size:18px;">›</span>
           </div>
@@ -2930,30 +3291,10 @@ function renderNutrition(){
   macro('prot', totals.prot, c.prot, 'var(--red)');
   macro('lip',  totals.lip,  c.lip,  'var(--blue)');
 
-  // Meals list
+  // Meals list — NEW: inline expandable cards with foods inside
   const mealsEl = document.getElementById('nut-meals');
-  mealsEl.innerHTML = meals.map(m => {
-    const t = computeMealTotals(m);
-    const foodPreview = m.foods.length === 0
-      ? '<span style="color:var(--txt3);">Aucun élément</span>'
-      : m.foods.slice(0,3).map(f => {
-          const a = ALIMENTS_DB.find(x => x.id === f.aid);
-          return a ? `${a.nom} ${f.g}g` : '';
-        }).filter(Boolean).join(' · ') + (m.foods.length > 3 ? ` +${m.foods.length-3}` : '');
-    return `<div class="card meal-card" onclick="openMeal('${m.id}')" style="padding:12px 14px;margin-bottom:8px;cursor:pointer;">
-      <div class="between">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:700;">${m.emoji} ${m.nom}</div>
-          <div style="font-size:11px;color:var(--txt2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${foodPreview}</div>
-        </div>
-        <div style="text-align:right;margin-left:10px;">
-          <strong style="font-family:'Montserrat',sans-serif;font-size:15px;">${t.kcal}</strong>
-          <span style="color:var(--txt3);font-size:11px;">kcal</span>
-          <span style="color:var(--txt3);margin-left:4px;">›</span>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+  if(!window._expandedMeals) window._expandedMeals = new Set();
+  mealsEl.innerHTML = meals.map(m => renderMealCardV2(m)).join('');
 
   // Add a meal button
   mealsEl.innerHTML += `<button class="btn btn-block" style="border-style:dashed;color:var(--red-br);border-color:var(--red-dk);background:var(--red-gl);margin:0 16px 10px;width:calc(100% - 32px);" onclick="addNewMeal()">+ Ajouter un repas</button>`;
@@ -2989,12 +3330,18 @@ function addNewMeal(){
    MEAL DETAIL (view & add foods)
    ====================================================================== */
 function openMeal(mealId){
+  // Legacy entry point — now just expands the meal inline instead of navigating
+  // to a detail screen. Kept for backward compat with any caller.
   const meals = loadDayMeals(selectedNutritionDate);
   const meal = meals.find(m => m.id === mealId);
   if(!meal) return;
   currentMealId = mealId;
-  renderMealDetail();
-  nav('meal');
+  toggleMealExpand(mealId);
+  // Scroll the expanded card into view
+  setTimeout(() => {
+    const el = document.getElementById('meal-' + mealId);
+    if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
 }
 
 function renderMealDetail(){
@@ -3092,6 +3439,366 @@ function deleteCurrentMeal(){
 }
 
 /* ======================================================================
+   NEW NUTRITION FLOW — inline meal expansion, quantity sheet, templates
+   ====================================================================== */
+
+/* Detect appropriate unit (g or ml) from food name */
+function getAlimentUnit(aid){
+  const a = ALIMENTS_DB.find(x => x.id === aid);
+  if(!a) return 'g';
+  if(/\b(lait|jus|boisson|eau|soda|soupe|bouillon|smoothie|sauce|vinaigre|sirop|coca|bière|thé|café)\b/i.test(a.nom)) return 'ml';
+  return 'g';
+}
+
+/* Render a single meal card with inline expansion (v2 UI) */
+function renderMealCardV2(m){
+  const t = computeMealTotals(m);
+  const isExpanded = window._expandedMeals && window._expandedMeals.has(m.id);
+  const foodsCount = m.foods.length;
+  const isEmpty = foodsCount === 0;
+  const subText = isEmpty ? `Vide · 0 kcal` : `${foodsCount} aliment${foodsCount > 1 ? 's' : ''} · ${t.kcal} kcal`;
+
+  let foodsHtml = '';
+  if(isEmpty){
+    foodsHtml = `<div class="meal-empty-hint">Aucun aliment pour l'instant</div>`;
+  } else {
+    foodsHtml = m.foods.map((f, idx) => {
+      const a = ALIMENTS_DB.find(x => x.id === f.aid);
+      if(!a) return '';
+      const unit = getAlimentUnit(f.aid);
+      const macro = computeFoodMacros(f.aid, f.g);
+      return `<div class="food-row-inline">
+        <span class="food-row-emoji">${a.emoji || '🍴'}</span>
+        <div class="food-row-info">
+          <div class="food-row-name">${escapeHtml(a.nom)}</div>
+          <div class="food-row-meta">${f.g} ${unit} · ${Math.round(macro.kcal)} kcal · ${Math.round(macro.prot)} P · ${Math.round(macro.gluc)} G · ${Math.round(macro.lip)} L</div>
+        </div>
+        <button class="food-row-btn" onclick="event.stopPropagation(); openQuantitySheet('${f.aid}', ${idx}, '${m.id}')" aria-label="Modifier ${escapeHtml(a.nom)}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </button>
+        <button class="food-row-btn" onclick="event.stopPropagation(); deleteFoodFromMeal('${m.id}', ${idx})" aria-label="Supprimer ${escapeHtml(a.nom)}">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>`;
+    }).join('');
+  }
+
+  return `<div class="meal-card-v2 ${isExpanded ? 'expanded' : ''} ${isEmpty ? 'empty' : ''}" id="meal-${m.id}">
+    <div class="meal-head" onclick="toggleMealExpand('${m.id}')">
+      <div class="meal-head-left">
+        <span class="meal-head-emoji">${m.emoji || '🍴'}</span>
+        <div>
+          <div class="meal-title">${escapeHtml(m.nom)}</div>
+          <div class="meal-sub">${subText}</div>
+        </div>
+      </div>
+      <svg class="meal-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="meal-body">
+      ${foodsHtml}
+      <div class="meal-actions-row">
+        <button class="meal-add-btn" onclick="openFoodPickerForMeal('${m.id}')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un aliment
+        </button>
+        <button class="meal-template-btn" onclick="openMealTemplateMenu('${m.id}')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Template
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* Toggle inline expansion of a meal card */
+function toggleMealExpand(mealId){
+  if(!window._expandedMeals) window._expandedMeals = new Set();
+  if(window._expandedMeals.has(mealId)) window._expandedMeals.delete(mealId);
+  else window._expandedMeals.add(mealId);
+  renderNutrition();
+}
+
+/* Open the food picker, remembering which meal the food will be added to */
+function openFoodPickerForMeal(mealId){
+  currentMealId = mealId;
+  openFoodPicker();
+}
+
+/* Delete a food from a meal (with confirm) + refresh + sync */
+function deleteFoodFromMeal(mealId, foodIdx){
+  const meals = loadDayMeals(selectedNutritionDate);
+  const meal = meals.find(m => m.id === mealId);
+  if(!meal) return;
+  const f = meal.foods[foodIdx];
+  if(!f) return;
+  const a = ALIMENTS_DB.find(x => x.id === f.aid);
+  const name = a ? a.nom : 'cet aliment';
+  if(!confirm(`Retirer ${name} de ce repas ?`)) return;
+  meal.foods.splice(foodIdx, 1);
+  saveDayMeals(selectedNutritionDate, meals);
+  renderNutrition();
+  buzz(30);
+  toast('✓ Aliment retiré');
+}
+
+/* ======================================================================
+   QUANTITY SHEET
+   ====================================================================== */
+let _qtyState = null;
+
+/* Open the bottom sheet for picking a quantity before adding/editing a food.
+   editIdx = null means "add new", editIdx = number means "edit existing" at that idx */
+function openQuantitySheet(aid, editIdx, mealId){
+  const a = ALIMENTS_DB.find(x => x.id === aid);
+  if(!a){ toast('Aliment introuvable'); return; }
+  if(!mealId) mealId = currentMealId;
+  const unit = getAlimentUnit(aid);
+  const meals = loadDayMeals(selectedNutritionDate);
+  const meal = meals.find(m => m.id === mealId);
+  if(!meal){ toast('Repas introuvable'); return; }
+
+  let initQty = 30;
+  if(editIdx !== null && editIdx !== undefined && meal.foods[editIdx]){
+    initQty = meal.foods[editIdx].g;
+  }
+
+  _qtyState = { aid, editIdx: (editIdx === undefined ? null : editIdx), mealId, unit, qty: initQty };
+
+  document.getElementById('qty-emoji').textContent = a.emoji || '🍴';
+  document.getElementById('qty-name').textContent = a.nom;
+  document.getElementById('qty-base').textContent = `Valeurs pour 100 ${unit} · ${a.kcal} kcal · ${a.prot} P · ${a.gluc} G · ${a.lip} L`;
+  document.getElementById('qty-unit').textContent = unit;
+  document.getElementById('qty-value').value = initQty;
+
+  const presets = unit === 'ml' ? [50, 100, 200, 330] : [10, 30, 50, 100];
+  const presetsEl = document.getElementById('qty-presets');
+  presetsEl.innerHTML = presets.map(p => `<button class="qty-preset" data-val="${p}" onclick="qtySetValue(${p})">${p} ${unit}</button>`).join('');
+
+  document.getElementById('qty-confirm-label').textContent = (editIdx !== null && editIdx !== undefined) ? 'Mettre à jour' : `Ajouter à ${meal.nom.toLowerCase()}`;
+
+  qtyRefreshMacros();
+  qtyMarkActivePreset();
+
+  // Close food picker if open (we're coming from there in add flow)
+  const picker = document.getElementById('food-picker-modal');
+  if(picker) picker.classList.remove('active');
+
+  document.getElementById('qty-sheet-bg').classList.add('active');
+}
+
+function closeQuantitySheet(){
+  document.getElementById('qty-sheet-bg').classList.remove('active');
+  _qtyState = null;
+}
+
+function qtySetValue(v){
+  if(!_qtyState) return;
+  const n = Math.max(1, Math.min(9999, Math.round(+v) || 0));
+  _qtyState.qty = n;
+  document.getElementById('qty-value').value = n;
+  qtyRefreshMacros();
+  qtyMarkActivePreset();
+}
+
+function qtyAdjust(delta){
+  if(!_qtyState) return;
+  qtySetValue(_qtyState.qty + delta);
+  buzz(15);
+}
+
+function qtyInputChange(){
+  const el = document.getElementById('qty-value');
+  qtySetValue(el.value);
+}
+
+function qtyMarkActivePreset(){
+  if(!_qtyState) return;
+  document.querySelectorAll('#qty-presets .qty-preset').forEach(btn => {
+    const v = +btn.dataset.val;
+    if(v === _qtyState.qty) btn.classList.add('active');
+    else btn.classList.remove('active');
+  });
+}
+
+function qtyRefreshMacros(){
+  if(!_qtyState) return;
+  const macro = computeFoodMacros(_qtyState.aid, _qtyState.qty);
+  document.getElementById('qty-macros-label').textContent = `Pour ${_qtyState.qty} ${_qtyState.unit}`;
+  document.getElementById('qty-m-kcal').textContent = Math.round(macro.kcal);
+  document.getElementById('qty-m-prot').textContent = macro.prot.toFixed(1).replace(/\.0$/, '');
+  document.getElementById('qty-m-gluc').textContent = macro.gluc.toFixed(1).replace(/\.0$/, '');
+  document.getElementById('qty-m-lip').textContent = macro.lip.toFixed(1).replace(/\.0$/, '');
+}
+
+function confirmQuantity(){
+  if(!_qtyState){ closeQuantitySheet(); return; }
+  const { aid, editIdx, mealId, qty } = _qtyState;
+  if(qty <= 0){ toast('Quantité invalide'); return; }
+  const meals = loadDayMeals(selectedNutritionDate);
+  const meal = meals.find(m => m.id === mealId);
+  if(!meal){ closeQuantitySheet(); return; }
+
+  const isEdit = (editIdx !== null && editIdx !== undefined);
+  if(isEdit){
+    meal.foods[editIdx].g = qty;
+  } else {
+    meal.foods.push({ aid, g: qty });
+    bumpFoodFrequency(aid);
+    // Auto-expand the meal so user sees what they just added
+    if(!window._expandedMeals) window._expandedMeals = new Set();
+    window._expandedMeals.add(mealId);
+  }
+  saveDayMeals(selectedNutritionDate, meals);
+
+  const a = ALIMENTS_DB.find(x => x.id === aid);
+  closeQuantitySheet();
+  renderNutrition();
+  buzz(40);
+  toast(isEdit ? `✓ ${a ? a.nom : 'Aliment'} mis à jour` : `✓ ${a ? a.nom : 'Aliment'} ajouté`);
+}
+
+/* ======================================================================
+   MEAL TEMPLATES (save & apply)
+   ====================================================================== */
+function getMealTemplates(){
+  if(!currentClient) return [];
+  try {
+    return JSON.parse(localStorage.getItem('applvl.mealTemplates.' + currentClient.id) || '[]');
+  } catch(e){ return []; }
+}
+
+function saveMealTemplates(arr){
+  if(!currentClient) return;
+  try { localStorage.setItem('applvl.mealTemplates.' + currentClient.id, JSON.stringify(arr)); } catch(e){}
+}
+
+/* Classify a meal's nom into a type key */
+function inferMealType(meal){
+  const n = (meal.nom || '').toLowerCase();
+  if(/matin|petit.d[eé]j|breakfast/.test(n)) return 'matin';
+  if(/midi|d[eé]jeuner|lunch/.test(n)) return 'midi';
+  if(/go[uû]ter|snack|collation/.test(n)) return 'gouter';
+  if(/soir|d[iî]ner|dinner|souper/.test(n)) return 'soir';
+  return 'autre';
+}
+
+const MEAL_TYPE_LABELS = { matin:'🌅 Matin', midi:'🍽 Midi', gouter:'🍪 Goûter', soir:'🌙 Soir', autre:'🍴 Autre' };
+
+function openMealTemplateMenu(mealId){
+  const meals = loadDayMeals(selectedNutritionDate);
+  const meal = meals.find(m => m.id === mealId);
+  if(!meal) return;
+  const mealType = inferMealType(meal);
+  const tpls = getMealTemplates().filter(t => t.mealType === mealType);
+
+  document.getElementById('tpl-menu-title').textContent = `Templates — ${meal.emoji || '🍴'} ${meal.nom}`;
+  document.getElementById('tpl-menu-sub').textContent = tpls.length === 0
+    ? 'Aucun template enregistré pour ce type de repas. Sauvegarde le repas actuel pour le réutiliser.'
+    : `${tpls.length} template${tpls.length > 1 ? 's' : ''} ${MEAL_TYPE_LABELS[mealType] || ''}`;
+
+  const hasCurrent = meal.foods && meal.foods.length > 0;
+  const saveBtn = `<button class="btn btn-p btn-block" onclick="saveMealAsTemplate('${mealId}')" style="margin-bottom:8px;" ${hasCurrent ? '' : 'disabled title="Ajoute au moins un aliment avant de sauvegarder"'}>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H8.5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2H19"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+    Sauvegarder ce repas comme template
+  </button>`;
+
+  let tplList = '';
+  if(tpls.length > 0){
+    tplList = '<div style="max-height:260px;overflow-y:auto;margin:10px 0;">';
+    tpls.forEach(t => {
+      const totalKcal = (t.foods || []).reduce((s, f) => s + computeFoodMacros(f.aid, f.g).kcal, 0);
+      tplList += `<div style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--brd);border-radius:8px;margin-bottom:6px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:700;">${escapeHtml(t.name)}</div>
+          <div style="font-size:10px;color:var(--txt3);margin-top:2px;">${(t.foods||[]).length} aliments · ${Math.round(totalKcal)} kcal</div>
+        </div>
+        <button class="btn btn-sm btn-p" onclick="applyMealTemplate('${t.id}','${mealId}')" style="padding:6px 10px;font-size:11px;">Appliquer</button>
+        <button class="btn btn-sm" onclick="deleteMealTemplate('${t.id}')" style="padding:6px 10px;font-size:11px;color:var(--txt3);" aria-label="Supprimer">✕</button>
+      </div>`;
+    });
+    tplList += '</div>';
+  }
+
+  document.getElementById('tpl-menu-body').innerHTML = saveBtn + tplList;
+  document.getElementById('tpl-menu-modal').classList.add('active');
+}
+
+function closeTplMenu(){
+  document.getElementById('tpl-menu-modal').classList.remove('active');
+}
+
+function saveMealAsTemplate(mealId){
+  const meals = loadDayMeals(selectedNutritionDate);
+  const meal = meals.find(m => m.id === mealId);
+  if(!meal || !meal.foods || meal.foods.length === 0){ toast('Repas vide'); return; }
+  askInput({
+    title: 'Nom du template',
+    sub: `Ex: Petit-déj protéiné, Collation post-training...`,
+    value: meal.nom,
+    type: 'text',
+    validator: v => {
+      if(!v || !v.trim()) return 'Nom requis';
+      if(v.length > 40) return 'Max 40 caractères';
+      return null;
+    }
+  }).then(name => {
+    if(!name) return;
+    const tpls = getMealTemplates();
+    tpls.push({
+      id: 'tpl_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+      name: name.trim(),
+      mealType: inferMealType(meal),
+      foods: meal.foods.map(f => ({ aid: f.aid, g: f.g })),
+      createdAt: Date.now()
+    });
+    saveMealTemplates(tpls);
+    closeTplMenu();
+    toast('✓ Template sauvegardé');
+    buzz(40);
+  });
+}
+
+function applyMealTemplate(tplId, mealId){
+  const tpls = getMealTemplates();
+  const tpl = tpls.find(t => t.id === tplId);
+  if(!tpl){ toast('Template introuvable'); return; }
+  const meals = loadDayMeals(selectedNutritionDate);
+  const meal = meals.find(m => m.id === mealId);
+  if(!meal) return;
+  const hasExisting = meal.foods && meal.foods.length > 0;
+  let mode = 'replace';
+  if(hasExisting){
+    const choice = confirm(`Le repas contient déjà ${meal.foods.length} aliment${meal.foods.length > 1 ? 's' : ''}.\n\nOK = ajouter le template par-dessus\nAnnuler = remplacer`);
+    mode = choice ? 'append' : 'replace';
+  }
+  const tplFoods = (tpl.foods || []).map(f => ({ aid: f.aid, g: f.g }));
+  if(mode === 'replace') meal.foods = tplFoods;
+  else meal.foods = (meal.foods || []).concat(tplFoods);
+  saveDayMeals(selectedNutritionDate, meals);
+  if(!window._expandedMeals) window._expandedMeals = new Set();
+  window._expandedMeals.add(mealId);
+  closeTplMenu();
+  renderNutrition();
+  toast(`✓ Template "${tpl.name}" appliqué`);
+  buzz(40);
+}
+
+function deleteMealTemplate(tplId){
+  if(!confirm('Supprimer ce template ?')) return;
+  const tpls = getMealTemplates().filter(t => t.id !== tplId);
+  saveMealTemplates(tpls);
+  // Refresh the menu if still open — find the current mealId from the title?
+  // Simpler: just close
+  closeTplMenu();
+  toast('✓ Template supprimé');
+}
+
+/* Small helper for safely embedding text in HTML */
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+/* ======================================================================
    FOOD PICKER MODAL
    ====================================================================== */
 function openFoodPicker(){
@@ -3136,33 +3843,14 @@ function renderFoodList(query){
 function pickFood(aid){
   const a = ALIMENTS_DB.find(x => x.id === aid);
   if(!a) return;
-  askInput({
-    title: `${a.emoji} ${a.nom}`,
-    sub: 'Combien de grammes ?',
-    value: 100,
-    type: 'number',
-    inputmode: 'numeric',
-    validator: v => {
-      const n = parseFloat(v.replace(',','.'));
-      if(isNaN(n) || n <= 0) return 'Poids invalide';
-      if(n > 5000) return 'Max 5000 g';
-      return null;
-    }
-  }).then(val => {
-    if(val === null) return;
-    const n = Math.round(parseFloat(val.replace(',','.')));
+  if(!currentMealId){
+    // Fallback: if no meal context, add to first meal of the day
     const meals = loadDayMeals(selectedNutritionDate);
-    const meal = meals.find(m => m.id === currentMealId);
-    if(!meal) return;
-    meal.foods.push({aid, g: n});
-    saveDayMeals(selectedNutritionDate, meals);
-    // Track food usage for favorites sorting
-    bumpFoodFrequency(aid);
-    closeFoodPicker();
-    renderMealDetail();
-    buzz(40);
-    toast(`✓ ${a.nom} ajouté`);
-  });
+    if(meals.length > 0) currentMealId = meals[0].id;
+    else { toast('Crée d\'abord un repas'); closeFoodPicker(); return; }
+  }
+  // Open the quantity sheet (which also auto-closes the food picker)
+  openQuantitySheet(aid, null, currentMealId);
 }
 
 // Food frequency tracking (per client)
