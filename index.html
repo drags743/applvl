@@ -200,6 +200,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg-base);color:var(--txt)
 .cal-ev-objectif{background:rgba(46,204,113,0.8);color:#fff;border-left:3px solid #2ecc71;}
 .cal-ev-done{background:rgba(200,241,53,0.85);color:#1a1a1a;border-left:3px solid #8fcf20;font-weight:600;}
 .cal-ev-missed{background:rgba(231,76,60,0.75);color:#fff;border-left:3px solid #c0392b;}
+.cal-ev-inprogress{background:rgba(243,156,18,0.85);color:#fff;border-left:3px solid #e67e22;font-weight:600;animation:pulse-orange 2s ease-in-out infinite;}
+@keyframes pulse-orange{0%,100%{box-shadow:0 0 0 0 rgba(243,156,18,0.4);}50%{box-shadow:0 0 0 6px rgba(243,156,18,0);}}
 .cal-add-slot{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;font-size:14px;font-weight:700;display:none;align-items:center;justify-content:center;cursor:pointer;z-index:3;}
 .cal-week-day-col:hover .cal-add-slot{display:flex;}
 /* ---- NUTRITION ---- */
@@ -1553,6 +1555,7 @@ function attachClientsListener(){
       attachClientCompletedListener(c.id);
       attachClientStatsListener(c.id);
       attachClientEventsListener(c.id);
+      attachClientActiveSessionListener(c.id);
     }
     setStatus('🟢 Sync live', '#2ecc71');
   }, err => {
@@ -1569,10 +1572,19 @@ function attachClientCompletedListener(clientId){
     .onSnapshot(snap => {
       try {
         if(!window.S) return;
-        const arr = snap.docs.map(d => d.data());
+        const arr = snap.docs.map(d => ({_docId: d.id, ...d.data()}));
         // Keep a per-client mirror on window.S for the UI to read
         if(!window.S.completedSessions) window.S.completedSessions = {};
         window.S.completedSessions[clientId] = arr;
+        // If the event detail modal is open, refresh it
+        try {
+          const modal = document.getElementById('mo-cal-event');
+          if(modal && modal.classList.contains('open') && _calCurrentEventIdx !== null){
+            if(String(_calCurrentClientId) === key && typeof openCalEventDetail === 'function'){
+              openCalEventDetail(_calCurrentClientId, _calCurrentEventIdx);
+            }
+          }
+        } catch(e){}
       } catch(e){}
     }, err => { console.warn('completed listener err', err); });
 }
@@ -1603,6 +1615,35 @@ function attachClientEventsListener(clientId){
         } catch(e){}
       } catch(e){}
     }, err => { console.warn('events listener err', err); });
+}
+
+// Active session listener — lets the coach see in real-time what the student is doing
+let _unsubActive = {};
+function attachClientActiveSessionListener(clientId){
+  const key = String(clientId);
+  if(_unsubActive[key]) return;
+  _unsubActive[key] = db.collection('clients').doc(key)
+    .collection('activeSession').doc('current')
+    .onSnapshot(snap => {
+      try {
+        if(!window.S) return;
+        if(!window.S.clientActiveSessions) window.S.clientActiveSessions = {};
+        window.S.clientActiveSessions[clientId] = snap.exists ? snap.data() : null;
+        // Re-render calendar (for orange pill) and live session view if open
+        try {
+          if(window.S.cur && String(window.S.cur.clientId) === key){
+            if(document.querySelector('.tab.active[onclick*="calendrier"]') && typeof renderClientCalendar === 'function'){
+              renderClientCalendar(clientId);
+            }
+            // If the "session live" modal is open for this client, refresh it
+            const liveModal = document.getElementById('mo-session-live');
+            if(liveModal && liveModal.classList.contains('open') && typeof renderSessionLive === 'function'){
+              renderSessionLive();
+            }
+          }
+        } catch(e){}
+      } catch(e){}
+    }, err => { console.warn('activeSession listener err', err); });
 }
 
 function attachClientStatsListener(clientId){
@@ -3521,11 +3562,19 @@ function renderCalWeek(clientId) {
         const type = CAL_TYPES[ev.type] || CAL_TYPES.seance;
         const dur = (+ev.duree||60);
         const height = Math.max(22, Math.round(dur / 60 * 52));
-        // Use Ekklo-style colors: green if completed, violet if future, red if overdue
+        // Ekklo-style colors:
+        // - green + ✓ = completed
+        // - orange + ⏱ = student has started it (activeSession exists)
+        // - red + ⚠ = past + never completed
+        // - violet = future planned
         const isPast = new Date(ev.date) < new Date(today);
-        const cls = ev.completed ? 'cal-ev-done' : (isPast && ev.type === 'seance' ? 'cal-ev-missed' : type.cls);
-        const badge = ev.completed ? ' ✓' : (isPast && ev.type === 'seance' ? ' ⚠' : '');
-        bodyHtml += `<div class="${cls} cal-week-event" style="height:${height}px;" onclick="event.stopPropagation();openCalEventDetail('${clientId}',${evIdx})">
+        const activeSess = window.S.clientActiveSessions?.[clientId];
+        const inProgress = activeSess && !activeSess.completed && activeSess.eventId === ev.id;
+        let cls = type.cls, badge = '';
+        if(ev.completed){ cls = 'cal-ev-done'; badge = ' ✓'; }
+        else if(inProgress){ cls = 'cal-ev-inprogress'; badge = ' ⏱'; }
+        else if(isPast && ev.type === 'seance'){ cls = 'cal-ev-missed'; badge = ' ⚠'; }
+        bodyHtml += `<div class="${cls} cal-week-event" style="height:${height}px;" onclick="event.stopPropagation();openCalEventDetail('${clientId}',${evIdx})" oncontextmenu="event.preventDefault();event.stopPropagation();showEventContextMenu(event, '${clientId}', ${evIdx});return false;">
           ${type.emoji} ${ev.nom}${badge}${dur>45?'<br><span style="font-size:9px;opacity:.7;">'+ev.heure+' · '+dur+'min</span>':''}
         </div>`;
       });
@@ -3563,9 +3612,13 @@ function renderCalMonth(clientId) {
       ${dayEvs.slice(0,3).map(ev => {
         const type = CAL_TYPES[ev.type]||CAL_TYPES.seance;
         const isPastEv = new Date(ev.date) < new Date(todayStr);
-        const cls = ev.completed ? 'cal-ev-done' : (isPastEv && ev.type === 'seance' ? 'cal-ev-missed' : type.cls);
-        const badge = ev.completed ? ' ✓' : (isPastEv && ev.type === 'seance' ? ' ⚠' : '');
-        return `<div class="cal-ev ${cls}" onclick="event.stopPropagation();openCalEventDetail('${clientId}',${events.indexOf(ev)})" style="cursor:pointer;">${type.emoji} ${ev.nom}${badge}</div>`;
+        const activeSess = window.S.clientActiveSessions?.[clientId];
+        const inProgress = activeSess && !activeSess.completed && activeSess.eventId === ev.id;
+        let cls = type.cls, badge = '';
+        if(ev.completed){ cls = 'cal-ev-done'; badge = ' ✓'; }
+        else if(inProgress){ cls = 'cal-ev-inprogress'; badge = ' ⏱'; }
+        else if(isPastEv && ev.type === 'seance'){ cls = 'cal-ev-missed'; badge = ' ⚠'; }
+        return `<div class="cal-ev ${cls}" onclick="event.stopPropagation();openCalEventDetail('${clientId}',${events.indexOf(ev)})" oncontextmenu="event.preventDefault();event.stopPropagation();showEventContextMenu(event, '${clientId}', ${events.indexOf(ev)});return false;" style="cursor:pointer;">${type.emoji} ${ev.nom}${badge}</div>`;
       }).join('')}
       ${dayEvs.length>3?`<div class="cal-ev" style="background:var(--bg-input);">+${dayEvs.length-3} autres</div>`:''}
     </div>`;
@@ -3778,7 +3831,97 @@ function openCalEventDetail(clientId, evIdx) {
   const ev = S.clientEvents?.[clientId]?.[evIdx];
   if (!ev) return;
   const t = CAL_TYPES[ev.type] || CAL_TYPES.seance;
-  document.getElementById('cal-event-detail-title').textContent = t.emoji + ' ' + ev.nom;
+
+  // Status badge
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const isPast = ev.date < todayStr;
+  const active = window.S.clientActiveSessions?.[clientId];
+  const inProgress = active && !active.completed && active.eventId === ev.id;
+
+  let statusPill;
+  if(ev.completed) statusPill = '<span style="background:rgba(46,204,113,.15);color:#2ecc71;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">✓ TERMINÉE</span>';
+  else if(inProgress) statusPill = '<span style="background:rgba(243,156,18,.18);color:#f39c12;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;animation:pulse-orange 2s infinite;">⏱ EN COURS</span>';
+  else if(isPast && ev.type === 'seance') statusPill = '<span style="background:rgba(231,76,60,.15);color:#e74c3c;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">⚠ MANQUÉE</span>';
+  else statusPill = '<span style="background:rgba(142,68,173,.2);color:#b47cc7;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;">📅 PLANIFIÉE</span>';
+
+  document.getElementById('cal-event-detail-title').innerHTML = `${t.emoji} ${ev.nom} ${statusPill}`;
+
+  // Build body with target / actual comparison
+  let exercisesHtml = '';
+  const seance = ev.seanceSnapshot;
+  if(seance && seance.exercises && ev.type === 'seance'){
+    // Find completed record or active session data
+    let actualData = null;
+    if(ev.completed && ev.completedDocId){
+      const completed = (window.S.completedSessions?.[clientId] || []).find(r => r._docId === ev.completedDocId);
+      // Fallback: find by event ID or close date
+      const completedList = window.S.completedSessions?.[clientId] || [];
+      actualData = completedList.find(r => r.eventId === ev.id) || completed;
+    }
+    if(!actualData && inProgress){
+      actualData = active; // live in-progress data
+    }
+
+    const rows = seance.exercises.map((plannedEx, pei) => {
+      const libEx = S.exercises.find(x => String(x.id) === String(plannedEx.id));
+      const exName = (libEx && libEx.nom) || plannedEx.nom || 'Exercice';
+      const plannedSets = plannedEx.setsData || [];
+
+      // Find matching exercise in actual data
+      let actualEx = null;
+      if(actualData && actualData.exercises){
+        actualEx = actualData.exercises[pei] || actualData.exercises.find(a => a.nom === exName);
+      }
+
+      const seriesRows = plannedSets.map((ps, si) => {
+        const tgtKg = ps.poids || 0, tgtReps = ps.reps || 0;
+        const actSer = actualEx && actualEx.series ? actualEx.series[si] : null;
+        const actKg = actSer ? (actSer.kg ?? actSer.kg_done ?? '—') : '—';
+        const actReps = actSer ? (actSer.reps ?? actSer.reps_done ?? '—') : '—';
+        const done = actSer && actSer.done;
+
+        let deltaColor = 'var(--txt3)';
+        let deltaTxt = '';
+        if(done && typeof actKg === 'number' && typeof actReps === 'number'){
+          const dKg = actKg - tgtKg;
+          const dReps = actReps - tgtReps;
+          if(dKg > 0 || (dKg === 0 && dReps > 0)){ deltaColor = 'var(--green)'; deltaTxt = '▲'; }
+          else if(dKg < 0 || dReps < 0){ deltaColor = '#e74c3c'; deltaTxt = '▼'; }
+          else { deltaColor = 'var(--txt3)'; deltaTxt = '═'; }
+        }
+
+        return `<tr style="border-top:1px solid var(--brd);">
+          <td style="padding:6px 8px;color:var(--txt3);font-size:11px;">S${si+1}</td>
+          <td style="padding:6px 8px;font-size:12px;color:var(--txt2);">${tgtKg}kg × ${tgtReps}</td>
+          <td style="padding:6px 8px;font-size:12px;font-weight:${done?600:400};color:${done?'var(--txt)':'var(--txt3)'};">
+            ${done ? `${actKg}kg × ${actReps}` : '—'}
+          </td>
+          <td style="padding:6px 8px;text-align:right;color:${deltaColor};font-size:11px;font-weight:700;">${deltaTxt}</td>
+        </tr>`;
+      }).join('');
+
+      return `<div style="margin-bottom:16px;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px;text-transform:uppercase;letter-spacing:.03em;">${exName}</div>
+        <table style="width:100%;border-collapse:collapse;background:var(--bg-input);border-radius:8px;overflow:hidden;">
+          <thead>
+            <tr style="background:rgba(255,255,255,.03);">
+              <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--txt3);text-transform:uppercase;font-weight:600;">#</th>
+              <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--txt3);text-transform:uppercase;font-weight:600;">Demandé</th>
+              <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--txt3);text-transform:uppercase;font-weight:600;">Réalisé</th>
+              <th style="padding:6px 8px;text-align:right;font-size:10px;color:var(--txt3);text-transform:uppercase;font-weight:600;">Δ</th>
+            </tr>
+          </thead>
+          <tbody>${seriesRows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+
+    exercisesHtml = `<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--brd);">
+      <div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:10px;">Exercices (${seance.exercises.length})</div>
+      ${rows}
+    </div>`;
+  }
+
   document.getElementById('cal-event-detail-body').innerHTML = `
     <div style="display:grid;gap:10px;padding:4px 0;">
       <div style="display:flex;justify-content:space-between;font-size:13px;">
@@ -3793,14 +3936,253 @@ function openCalEventDetail(clientId, evIdx) {
         <span style="color:var(--txt3);">Durée</span>
         <span style="font-weight:500;">${ev.duree || 60} min</span>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;">
-        <span style="color:var(--txt3);">Type</span>
-        <span class="tag">${t.label}</span>
-      </div>
+      ${ev.programName ? `<div style="display:flex;justify-content:space-between;font-size:13px;">
+        <span style="color:var(--txt3);">Programme</span>
+        <span class="tag tag-r">${ev.programName}</span>
+      </div>` : ''}
       ${ev.notes ? `<div style="margin-top:6px;padding:10px;background:var(--bg-input);border-radius:var(--rs);font-size:12px;color:var(--txt2);">${ev.notes}</div>` : ''}
-    </div>`;
+    </div>
+    ${exercisesHtml}
+    ${ev.type === 'seance' && ev.seanceSnapshot ? `
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn" onclick="duplicateEventForDate('${clientId}', ${evIdx})" style="font-size:12px;padding:8px 14px;">
+          ⧉ Dupliquer pour une autre date
+        </button>
+      </div>` : ''}`;
+
   openModal('mo-cal-event');
 }
+
+/* Duplicate an event (and its seance) for another date — useful to replay
+   a session with the student's ACTUAL weights next week */
+function duplicateEventForDate(clientId, evIdx){
+  const ev = S.clientEvents?.[clientId]?.[evIdx];
+  if(!ev) return;
+
+  // Default: one week later
+  const d = new Date(ev.date);
+  d.setDate(d.getDate() + 7);
+  const defaultDate = d.toISOString().slice(0, 10);
+
+  const useRealWeights = ev.completed;
+  const note = useRealWeights
+    ? '💡 Les poids et reps seront pré-remplis avec ce que ton élève a <strong>vraiment fait</strong> — tu peux les ajuster ensuite dans l\'éditeur.'
+    : '';
+
+  const html = `
+    <div id="dup-event-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;" onclick="if(event.target===this)closeDupEventModal()">
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:16px;max-width:440px;width:100%;padding:22px;font-family:'DM Sans',sans-serif;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div>
+            <div style="font-family:'Montserrat',sans-serif;font-size:17px;font-weight:800;">⧉ Dupliquer la séance</div>
+            <div style="font-size:12px;color:var(--txt3);margin-top:3px;">${ev.nom}</div>
+          </div>
+          <button onclick="closeDupEventModal()" style="background:transparent;border:none;color:var(--txt3);font-size:22px;cursor:pointer;">✕</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+          <div>
+            <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Nouvelle date</label>
+            <input type="date" id="dup-ev-date" class="fs" value="${defaultDate}" style="width:100%;">
+          </div>
+          <div>
+            <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Heure</label>
+            <input type="time" id="dup-ev-time" class="fs" value="${ev.heure || '09:00'}" style="width:100%;">
+          </div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="display:block;font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:4px;">Nom de la séance</label>
+          <input type="text" id="dup-ev-name" class="fs" value="${ev.nom}" style="width:100%;">
+        </div>
+
+        ${useRealWeights ? `
+          <div style="margin-bottom:14px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+              <input type="checkbox" id="dup-ev-usereal" checked>
+              <span>Utiliser les <strong>poids réellement faits</strong> par l'élève</span>
+            </label>
+            <div style="font-size:11px;color:var(--txt3);margin-top:4px;margin-left:20px;line-height:1.4;">${note}</div>
+          </div>` : ''}
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:14px;border-top:1px solid var(--brd);">
+          <button onclick="closeDupEventModal()" style="padding:9px 16px;border-radius:8px;border:1px solid var(--brd);background:transparent;color:var(--txt2);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">Annuler</button>
+          <button onclick="executeDuplicateEvent('${clientId}', ${evIdx})" class="btn btn-p" style="padding:9px 20px;">Dupliquer</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  setTimeout(() => document.getElementById('dup-ev-name')?.focus(), 50);
+}
+window.duplicateEventForDate = duplicateEventForDate;
+
+function closeDupEventModal(){
+  const m = document.getElementById('dup-event-modal');
+  if(m) m.remove();
+}
+window.closeDupEventModal = closeDupEventModal;
+
+async function executeDuplicateEvent(clientId, evIdx){
+  const ev = S.clientEvents?.[clientId]?.[evIdx];
+  if(!ev) return;
+  const newDate = document.getElementById('dup-ev-date')?.value;
+  const newTime = document.getElementById('dup-ev-time')?.value || ev.heure;
+  const newName = document.getElementById('dup-ev-name')?.value.trim() || ev.nom;
+  const useReal = document.getElementById('dup-ev-usereal')?.checked;
+  if(!newDate){ toast('Choisis une date'); return; }
+
+  // Clone event
+  const cloneEv = JSON.parse(JSON.stringify(ev));
+  cloneEv.id = 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  cloneEv.date = newDate;
+  cloneEv.heure = newTime;
+  cloneEv.nom = newName;
+  cloneEv.completed = false;
+  cloneEv.completedAt = null;
+  cloneEv.completedDocId = null;
+  cloneEv.createdAt = new Date().toISOString();
+
+  // Replace target weights with the student's actual performance if requested
+  if(useReal && ev.completed && cloneEv.seanceSnapshot){
+    const completedList = window.S.completedSessions?.[clientId] || [];
+    const completedRec = completedList.find(r => r.eventId === ev.id)
+      || completedList.find(r => r.sessionName === ev.nom);
+    if(completedRec){
+      cloneEv.seanceSnapshot.exercises.forEach((planEx, pei) => {
+        const actEx = completedRec.exercises[pei];
+        if(!actEx || !planEx.setsData) return;
+        planEx.setsData.forEach((ps, si) => {
+          const actSer = actEx.series && actEx.series[si];
+          if(actSer && actSer.done){
+            ps.poids = actSer.kg ?? ps.poids;
+            ps.reps = actSer.reps ?? ps.reps;
+          }
+        });
+      });
+    }
+  }
+
+  if(!S.clientEvents[clientId]) S.clientEvents[clientId] = [];
+  S.clientEvents[clientId].push(cloneEv);
+  const c = S.clients.find(x => String(x.id) === String(clientId));
+  if(c && !c._fake && typeof db !== 'undefined' && firebase.auth().currentUser){
+    try {
+      await db.collection('clients').doc(String(clientId))
+        .collection('events').doc(cloneEv.id)
+        .set(cloneEv);
+    } catch(e){ console.warn('dup event FB err', e); }
+  }
+
+  closeDupEventModal();
+  closeModal('mo-cal-event');
+  renderClientCalendar(clientId);
+  toast('✓ Séance dupliquée au ' + newDate);
+}
+window.executeDuplicateEvent = executeDuplicateEvent;
+
+/* Right-click context menu on a calendar event */
+function showEventContextMenu(e, clientId, evIdx){
+  // Remove any existing menu
+  const existing = document.getElementById('cal-ctx-menu');
+  if(existing) existing.remove();
+
+  const ev = S.clientEvents?.[clientId]?.[evIdx];
+  if(!ev) return;
+
+  const menu = document.createElement('div');
+  menu.id = 'cal-ctx-menu';
+  menu.style.cssText = `
+    position:fixed;left:${Math.min(e.clientX, window.innerWidth - 220)}px;top:${Math.min(e.clientY, window.innerHeight - 220)}px;
+    background:var(--bg-card);border:1px solid var(--brd);border-radius:10px;
+    min-width:200px;z-index:10001;
+    box-shadow:0 8px 24px rgba(0,0,0,.5);overflow:hidden;font-family:'DM Sans',sans-serif;`;
+
+  const canDuplicate = ev.type === 'seance' && ev.seanceSnapshot;
+  menu.innerHTML = `
+    <div onclick="closeEventContextMenu();openCalEventDetail('${clientId}',${evIdx});" style="padding:10px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
+      👁 Voir les détails
+    </div>
+    ${canDuplicate ? `
+      <div onclick="closeEventContextMenu();duplicateEventForDate('${clientId}',${evIdx});" style="padding:10px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
+        ⧉ Dupliquer (+7 jours)
+      </div>
+      <div onclick="closeEventContextMenu();quickDuplicateNextWeek('${clientId}',${evIdx});" style="padding:10px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:10px;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='var(--red-gl)'" onmouseout="this.style.background=''">
+        🚀 Dupliquer direct semaine prochaine
+      </div>
+    ` : ''}
+    <div onclick="closeEventContextMenu();_calCurrentClientId='${clientId}';_calCurrentEventIdx=${evIdx};deleteCalEvent();" style="padding:10px 14px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:10px;color:#e74c3c;border-top:1px solid var(--brd);transition:.1s;" onmouseover="this.style.background='rgba(231,76,60,.1)'" onmouseout="this.style.background=''">
+      🗑 Supprimer
+    </div>`;
+  document.body.appendChild(menu);
+
+  // Close on outside click / escape
+  setTimeout(() => {
+    const handler = (ev) => {
+      if(!ev.target.closest('#cal-ctx-menu')) closeEventContextMenu();
+    };
+    const esc = (ev) => { if(ev.key === 'Escape') closeEventContextMenu(); };
+    document.addEventListener('click', handler, {once: true});
+    document.addEventListener('keydown', esc, {once: true});
+  }, 10);
+}
+window.showEventContextMenu = showEventContextMenu;
+
+function closeEventContextMenu(){
+  const m = document.getElementById('cal-ctx-menu');
+  if(m) m.remove();
+}
+window.closeEventContextMenu = closeEventContextMenu;
+
+/* Shortcut: duplicate directly next week with smart defaults.
+   If completed: copies ACTUAL weights. Otherwise keeps targets. */
+async function quickDuplicateNextWeek(clientId, evIdx){
+  const ev = S.clientEvents?.[clientId]?.[evIdx];
+  if(!ev) return;
+  const d = new Date(ev.date);
+  d.setDate(d.getDate() + 7);
+  const newDate = d.toISOString().slice(0, 10);
+
+  const cloneEv = JSON.parse(JSON.stringify(ev));
+  cloneEv.id = 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  cloneEv.date = newDate;
+  cloneEv.completed = false;
+  cloneEv.completedAt = null;
+  cloneEv.completedDocId = null;
+  cloneEv.createdAt = new Date().toISOString();
+
+  // Use actual weights if available
+  if(ev.completed && cloneEv.seanceSnapshot){
+    const completedList = window.S.completedSessions?.[clientId] || [];
+    const completedRec = completedList.find(r => r.eventId === ev.id)
+      || completedList.find(r => r.sessionName === ev.nom);
+    if(completedRec){
+      cloneEv.seanceSnapshot.exercises.forEach((planEx, pei) => {
+        const actEx = completedRec.exercises[pei];
+        if(!actEx || !planEx.setsData) return;
+        planEx.setsData.forEach((ps, si) => {
+          const actSer = actEx.series && actEx.series[si];
+          if(actSer && actSer.done){
+            ps.poids = actSer.kg ?? ps.poids;
+            ps.reps = actSer.reps ?? ps.reps;
+          }
+        });
+      });
+    }
+  }
+
+  if(!S.clientEvents[clientId]) S.clientEvents[clientId] = [];
+  S.clientEvents[clientId].push(cloneEv);
+  const c = S.clients.find(x => String(x.id) === String(clientId));
+  if(c && !c._fake && typeof db !== 'undefined' && firebase.auth().currentUser){
+    try {
+      await db.collection('clients').doc(String(clientId))
+        .collection('events').doc(cloneEv.id)
+        .set(cloneEv);
+    } catch(e){ console.warn('quick dup err', e); }
+  }
+  renderClientCalendar(clientId);
+  toast('✓ Séance dupliquée le ' + newDate + (ev.completed ? ' (avec poids réels)' : ''));
+}
+window.quickDuplicateNextWeek = quickDuplicateNextWeek;
 
 async function deleteCalEvent() {
   if (_calCurrentClientId === null || _calCurrentEventIdx === null) return;
