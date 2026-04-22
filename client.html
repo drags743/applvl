@@ -1214,26 +1214,74 @@ async function checkUnfinishedSession(uid){
     const when = savedAt ? savedAt.toLocaleDateString('fr-FR',{day:'numeric',month:'long'}) + ' à ' + savedAt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : 'dernièrement';
     const sessName = saved.sessionName || 'ta séance';
 
-    // Wait a moment so the app is rendered before prompting
-    setTimeout(() => {
-      const ok = confirm('🔄 Reprendre ta séance ?\n\nTu as commencé "' + sessName + '" le ' + when + ' sans la terminer.\nTes répétitions et poids ont été sauvegardés automatiquement.\n\nCliquer OK pour reprendre, Annuler pour supprimer.');
-      if(ok){
-        resumeSavedSession(saved);
-      } else {
-        fbDb.collection('clients').doc(uid).collection('activeSession').doc('current').delete().catch(()=>{});
-        toast('Séance supprimée');
+    // Compute how much elapsed time we should restore
+    let restoreElapsed = saved.elapsedSec || 0;
+    if(saved.lastTickAt){
+      const gapSec = Math.floor((Date.now() - new Date(saved.lastTickAt).getTime()) / 1000);
+      // If user was away < 10 minutes, count the gap as "still in session"
+      // Otherwise, just keep the elapsed time at last save
+      if(gapSec >= 0 && gapSec < 600){
+        restoreElapsed += gapSec;
       }
-    }, 800);
+    }
+
+    // Show a proper in-app modal
+    setTimeout(() => {
+      showResumeModal({ sessName, when, restoreElapsed, saved, uid });
+    }, 600);
   } catch(e){ console.warn('checkUnfinishedSession err', e); }
 }
 
-function resumeSavedSession(saved){
+function showResumeModal({sessName, when, restoreElapsed, saved, uid}){
+  const existing = document.getElementById('resume-modal');
+  if(existing) existing.remove();
+
+  const elapsedMm = Math.floor(restoreElapsed / 60);
+  const elapsedSs = restoreElapsed % 60;
+
+  const modal = document.createElement('div');
+  modal.id = 'resume-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--card,#1a1a1a);border:1px solid var(--brd,#333);border-radius:18px;max-width:380px;width:100%;padding:26px 22px;text-align:center;">
+      <div style="width:64px;height:64px;border-radius:50%;background:rgba(192,57,43,.15);color:var(--red-br,#c0392b);display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      </div>
+      <div style="font-family:'Montserrat',sans-serif;font-size:19px;font-weight:800;margin-bottom:6px;">Reprendre ta séance ?</div>
+      <div style="font-size:13px;color:var(--txt2,#bbb);line-height:1.5;margin-bottom:16px;">
+        Tu as commencé <strong>${sessName}</strong> ${when}<br>sans la terminer.
+      </div>
+      <div style="background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.2);border-radius:10px;padding:10px 14px;font-size:12px;color:var(--green,#2ecc71);margin-bottom:18px;">
+        ✓ Tes répétitions et poids sont sauvegardés<br>
+        ⏱ Chrono à reprendre : ${String(elapsedMm).padStart(2,'0')}:${String(elapsedSs).padStart(2,'0')}
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button id="resume-cancel" style="flex:1;padding:13px;border-radius:11px;border:1px solid var(--brd,#333);background:transparent;color:var(--txt3,#888);font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">Supprimer</button>
+        <button id="resume-ok" style="flex:1.4;padding:13px;border-radius:11px;border:none;background:var(--red-br,#c0392b);color:#fff;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;">↻ Reprendre</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  document.getElementById('resume-cancel').onclick = () => {
+    modal.remove();
+    fbDb.collection('clients').doc(uid).collection('activeSession').doc('current').delete().catch(()=>{});
+    toast('Séance supprimée');
+  };
+  document.getElementById('resume-ok').onclick = () => {
+    modal.remove();
+    resumeSavedSession(saved, restoreElapsed);
+  };
+}
+window.showResumeModal = showResumeModal;
+
+function resumeSavedSession(saved, restoreElapsed){
   if(!saved || !saved.exercises) return;
   activeSession = {
     nom: saved.sessionName || 'Séance',
     sessionName: saved.sessionName,
     programId: saved.programId,
     seanceIdx: saved.seanceIdx,
+    eventId: saved.eventId || null,
     exercises: saved.exercises,
   };
   activeExIdx = saved.activeExIdx || 0;
@@ -1249,11 +1297,13 @@ function resumeSavedSession(saved){
     }
   }
 
-  sessionStartTs = Date.now();
+  // Restore the chrono: rewind sessionStartTs so it shows the saved elapsed time
+  const elapsed = (typeof restoreElapsed === 'number' && restoreElapsed > 0) ? restoreElapsed : 0;
+  sessionStartTs = Date.now() - (elapsed * 1000);
   startDurationTimer();
   renderExo();
   nav('exo');
-  toast('✓ Séance reprise — tes données sont préservées');
+  toast('✓ Séance reprise');
 }
 window.checkUnfinishedSession = checkUnfinishedSession;
 window.resumeSavedSession = resumeSavedSession;
@@ -1982,21 +2032,35 @@ function _finishSessionInner(){
   // Build record with target vs actual (demandé vs réalisé)
   let record = null;
   if(sessionSnapshot && currentClient){
+    // Helper: never let undefined slip into Firestore
+    const num = (v, fallback) => {
+      const n = +v;
+      return (v === undefined || v === null || isNaN(n)) ? fallback : n;
+    };
+    const str = (v, fallback) => (v === undefined || v === null) ? fallback : String(v);
+
     record = {
-      clientId: currentClient.id,
+      clientId: String(currentClient.id),
       date: new Date().toISOString(),
-      duration,
-      sessionName: sessionSnapshot.nom,
+      duration: num(duration, 0),
+      sessionName: str(sessionSnapshot.nom, 'Séance'),
       eventId: sessionSnapshot.eventId || null,
-      totalKg, totalReps, seriesDone, seriesTotal,
-      exercises: sessionSnapshot.exercises.map(e => ({
-        nom: e.nom, muscle: e.muscle, equipment: e.equipment,
+      programId: sessionSnapshot.programId || null,
+      seanceIdx: num(sessionSnapshot.seanceIdx, 0),
+      totalKg: num(totalKg, 0),
+      totalReps: num(totalReps, 0),
+      seriesDone: num(seriesDone, 0),
+      seriesTotal: num(seriesTotal, 0),
+      exercises: (sessionSnapshot.exercises || []).map(e => ({
+        nom: str(e.nom, 'Exercice'),
+        muscle: str(e.muscle, ''),
+        equipment: str(e.equipment, ''),
         series: (e.series || []).map(s => ({
-          kg_target: s.kg,            // ce que le coach a demandé (inchangé dans startSession)
-          reps_target: s.reps,
-          kg: s.kg_done ?? s.kg,       // ce que l'élève a réellement fait
-          reps: s.reps_done ?? s.reps,
-          rest: s.rest,
+          kg_target: num(s.kg_target ?? s.kg, 0),
+          reps_target: num(s.reps_target ?? s.reps, 0),
+          kg: num(s.kg_done ?? s.kg, 0),
+          reps: num(s.reps_done ?? s.reps, 0),
+          rest: num(s.rest, 60),
           done: s.done === true
         }))
       }))
@@ -2010,26 +2074,32 @@ function _finishSessionInner(){
       localStorage.setItem(key, JSON.stringify(arr));
     } catch(e) { console.warn('local save err', e); }
 
-    // Firestore sync
+    // Firestore sync — wrap each call separately so one failure doesn't stop others
     if(isFirebaseAuthed() && !localStorage.getItem('applvl.admin')){
       const docId = String(Date.now());
-      fbDb.collection('clients').doc(String(currentClient.id))
-        .collection('completed').doc(docId)
-        .set({ ...record, _ts: firebase.firestore.FieldValue.serverTimestamp() })
-        .catch(e => console.warn('completed sync err', e));
+      try {
+        fbDb.collection('clients').doc(String(currentClient.id))
+          .collection('completed').doc(docId)
+          .set({ ...record, _ts: firebase.firestore.FieldValue.serverTimestamp() })
+          .catch(e => console.warn('completed sync err', e));
+      } catch(e){ console.warn('completed set err', e); }
 
       // Mark the planned event as completed so it turns green on coach calendar
       if(sessionSnapshot.eventId){
-        fbDb.collection('clients').doc(String(currentClient.id))
-          .collection('events').doc(sessionSnapshot.eventId)
-          .update({ completed: true, completedAt: new Date().toISOString(), completedDocId: docId })
-          .catch(e => console.warn('mark event done err', e));
+        try {
+          fbDb.collection('clients').doc(String(currentClient.id))
+            .collection('events').doc(sessionSnapshot.eventId)
+            .update({ completed: true, completedAt: new Date().toISOString(), completedDocId: docId })
+            .catch(e => console.warn('mark event done err', e));
+        } catch(e){}
       }
 
       // Clear auto-saved active session
-      fbDb.collection('clients').doc(String(currentClient.id))
-        .collection('activeSession').doc('current').delete()
-        .catch(e => console.warn('autoSave clear err', e));
+      try {
+        fbDb.collection('clients').doc(String(currentClient.id))
+          .collection('activeSession').doc('current').delete()
+          .catch(e => console.warn('autoSave clear err', e));
+      } catch(e){}
     }
   }
 
@@ -2356,12 +2426,40 @@ async function doAutoSaveSession(){
   const user = (typeof fbAuth !== 'undefined') ? fbAuth.currentUser : (firebase.auth ? firebase.auth().currentUser : null);
   if(!user) return;
   try {
+    // Sanitize exercises to remove any undefined fields Firebase rejects
+    const cleanExercises = (activeSession.exercises || []).map(ex => {
+      const cleanEx = {
+        id: ex.id ?? null,
+        nom: ex.nom || 'Exercice',
+        muscle: ex.muscle || '',
+        equipment: ex.equipment || '',
+        series: (ex.series || []).map(s => ({
+          kg: +s.kg || 0,
+          reps: +s.reps || 0,
+          rest: +s.rest || 60,
+          kg_target: +(s.kg_target ?? s.kg) || 0,
+          reps_target: +(s.reps_target ?? s.reps) || 0,
+          kg_done: s.kg_done ?? null,
+          reps_done: s.reps_done ?? null,
+          done: s.done === true,
+        })),
+      };
+      // Optional fields only if present
+      if(ex.last) cleanEx.last = { kg: +ex.last.kg || 0, reps: +ex.last.reps || 0 };
+      return cleanEx;
+    });
+
+    const elapsedSec = sessionStartTs ? Math.floor((Date.now() - sessionStartTs) / 1000) : 0;
     const payload = {
       sessionName: activeSession.nom || activeSession.sessionName || 'Séance',
       programId: activeSession.programId || null,
       seanceIdx: (activeSession.seanceIdx !== undefined && activeSession.seanceIdx !== null) ? activeSession.seanceIdx : null,
-      activeExIdx, activeSerIdx,
-      exercises: activeSession.exercises,
+      eventId: activeSession.eventId || null,
+      activeExIdx: activeExIdx || 0,
+      activeSerIdx: activeSerIdx || 0,
+      exercises: cleanExercises,
+      elapsedSec,                        // pour reprendre avec le chrono préservé
+      lastTickAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       completed: false,
     };
