@@ -250,6 +250,17 @@ const fbDb = firebase.firestore();
 
 <div id="app">
 
+<!-- ========== BOOT LOADING (shown by default, hidden by nav()) ========== -->
+<div class="screen active" id="screen-boot" style="align-items:center;justify-content:center;">
+  <div style="text-align:center;">
+    <div class="logo-lvl" style="margin:0 auto 18px;"></div>
+    <div style="font-family:'Montserrat',sans-serif;font-size:18px;font-weight:800;letter-spacing:.05em;margin-bottom:6px;">TIMOTHY LVL</div>
+    <div style="font-size:12px;color:var(--txt3);margin-bottom:24px;">Chargement…</div>
+    <div class="boot-spinner" style="width:30px;height:30px;margin:0 auto;border:3px solid var(--brd);border-top-color:var(--red-br);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+  </div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg);}}</style>
+
 <!-- ========== LOGIN ========== -->
 <div class="screen" id="screen-login">
   <div class="login-logo">
@@ -2088,7 +2099,7 @@ function finishSession(){
 
   try { buzz([100, 50, 100, 50, 150]); } catch(e){}
 
-  document.body.innerHTML = `<div id="app"><div class="screen active session-done" style="display:flex;flex-direction:column;align-items:center;padding:50px 24px 40px;overflow-y:auto;">
+  const endScreenHtml = `<div id="app"><div class="screen active session-done" style="display:flex;flex-direction:column;align-items:center;padding:50px 24px 40px;overflow-y:auto;">
     <div class="big-check" style="width:80px;height:80px;border-radius:50%;background:var(--green);color:#000;display:inline-flex;align-items:center;justify-content:center;margin-bottom:20px;">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
@@ -2122,6 +2133,16 @@ function finishSession(){
 
     <button class="btn btn-p btn-block" style="max-width:380px;padding:14px;font-size:14px;font-weight:700;" onclick="window._finishing=false;location.reload()">Retour à l'accueil</button>
   </div></div>`;
+
+  try {
+    document.body.innerHTML = endScreenHtml;
+  } catch(err){
+    console.error('endScreen replace err', err);
+    // Fallback: reload the app — the session is already saved, user will see it in history
+    alert('✓ Séance terminée et enregistrée !\n\nL\'app va se recharger.');
+    window._finishing = false;
+    location.reload();
+  }
 }
 
 function confirmFinishSession(){
@@ -2129,14 +2150,39 @@ function confirmFinishSession(){
   // Count completed vs total series
   let total=0, done=0;
   for(const e of activeSession.exercises){
-    for(const s of e.series){ total++; if(s.done) done++; }
+    for(const s of (e.series||[])){ total++; if(s.done) done++; }
   }
   const remaining = total - done;
   const msg = remaining > 0
-    ? `Terminer la séance maintenant ?\n\n${done}/${total} séries validées (${remaining} non faite${remaining>1?'s':''} seront marquées non terminées).`
-    : `Terminer la séance ? Toutes tes séries sont enregistrées ✓`;
-  if(confirm(msg)) finishSession();
+    ? `${done}/${total} séries validées. ${remaining} non faite${remaining>1?'s':''} sera marquée${remaining>1?'s':''} non terminée${remaining>1?'s':''}.`
+    : `Toutes tes séries sont enregistrées ✓`;
+
+  // Remove any existing confirm modal
+  const existing = document.getElementById('finish-confirm-modal');
+  if(existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = 'finish-confirm-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:var(--card,#1a1a1a);border:1px solid var(--brd,#333);border-radius:16px;max-width:360px;width:100%;padding:24px;text-align:center;">
+      <div style="font-size:44px;margin-bottom:10px;">🏁</div>
+      <div style="font-family:'Montserrat',sans-serif;font-size:18px;font-weight:800;margin-bottom:8px;">Terminer la séance ?</div>
+      <div style="font-size:13px;color:var(--txt3,#888);margin-bottom:20px;line-height:1.5;">${msg}</div>
+      <div style="display:flex;gap:10px;">
+        <button id="finish-cancel-btn" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--brd,#333);background:transparent;color:var(--txt2,#bbb);font-weight:600;font-size:14px;cursor:pointer;font-family:inherit;">Annuler</button>
+        <button id="finish-ok-btn" style="flex:1;padding:12px;border-radius:10px;border:none;background:var(--green,#2ecc71);color:#000;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;">✓ Terminer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  document.getElementById('finish-cancel-btn').onclick = () => modal.remove();
+  document.getElementById('finish-ok-btn').onclick = () => {
+    modal.remove();
+    finishSession();
+  };
 }
+window.confirmFinishSession = confirmFinishSession;
 
 /* ======================================================================
    REST TIMER (level 1 — Date.now() based, survives tab inactivity)
@@ -2931,7 +2977,29 @@ function buzz(pattern){
 /* ======================================================================
    BOOT
    ====================================================================== */
-tryAutoLogin();
+// Safety net: if tryAutoLogin doesn't resolve within 6s (e.g. Firebase stalls),
+// kick to login so the user never stays on a blank boot screen.
+const _bootFallback = setTimeout(() => {
+  const boot = document.getElementById('screen-boot');
+  if(boot && boot.classList.contains('active')){
+    console.warn('Boot stalled, forcing login screen');
+    nav('login');
+  }
+}, 6000);
+
+// Clear the safety net as soon as any nav happens
+const _bootOrigNav = window.nav;
+window.nav = function(screen){
+  if(screen && screen !== 'boot') clearTimeout(_bootFallback);
+  return _bootOrigNav.apply(this, arguments);
+};
+
+try {
+  tryAutoLogin();
+} catch(err){
+  console.error('tryAutoLogin err', err);
+  nav('login');
+}
 if(isHydraReminderOn()) startHydraReminder();
 setTimeout(() => updateHydraReminderUi(), 100);
 </script>
