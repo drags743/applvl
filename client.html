@@ -1934,27 +1934,44 @@ function prevSeries(){
 }
 
 function finishSession(){
-  // Guard: if already finishing, ignore double-clicks
+  // Guard against double-clicks (but reset in catch below if anything fails)
   if(window._finishing) return;
   window._finishing = true;
 
+  try {
+    _finishSessionInner();
+  } catch(err){
+    console.error('finishSession ERROR:', err);
+    // Show the error so user sees what's wrong instead of silent failure
+    alert('⚠ Erreur en terminant la séance :\n\n' + (err && err.message ? err.message : err) + '\n\nLa page va se recharger.');
+    window._finishing = false;
+    try { location.reload(); } catch(e){}
+  }
+}
+
+function _finishSessionInner(){
   // Snapshot session BEFORE clearing
   const sessionSnapshot = activeSession;
   const startTs = sessionStartTs;
 
+  // If there's nothing to finish, just go home
+  if(!sessionSnapshot){
+    window._finishing = false;
+    nav('sport');
+    return;
+  }
+
   // Compute session stats
   let totalKg = 0, totalReps = 0, seriesDone = 0, seriesTotal = 0;
-  if(sessionSnapshot){
-    for(const e of sessionSnapshot.exercises){
-      for(const s of (e.series || [])){
-        seriesTotal++;
-        if(s.done){
-          seriesDone++;
-          const kg = s.kg_done ?? s.kg ?? 0;
-          const reps = s.reps_done ?? s.reps ?? 0;
-          totalKg += kg * reps;
-          totalReps += reps;
-        }
+  for(const e of (sessionSnapshot.exercises || [])){
+    for(const s of (e.series || [])){
+      seriesTotal++;
+      if(s.done){
+        seriesDone++;
+        const kg = s.kg_done ?? s.kg ?? 0;
+        const reps = s.reps_done ?? s.reps ?? 0;
+        totalKg += kg * reps;
+        totalReps += reps;
       }
     }
   }
