@@ -1606,6 +1606,36 @@ function attachClientEventsListener(clientId){
         });
         if(!window.S.clientEvents) window.S.clientEvents = {};
         window.S.clientEvents[clientId] = arr;
+        // BACKFILL: re-hydrate any old event whose snapshot exercises lack proper names
+        // (legacy events created before the snapshot-hydration fix)
+        try {
+          const lib = window.S.exercises || [];
+          arr.forEach(ev => {
+            if(!ev.seanceSnapshot || !Array.isArray(ev.seanceSnapshot.exercises)) return;
+            let dirty = false;
+            ev.seanceSnapshot.exercises = ev.seanceSnapshot.exercises.map((ex, idx) => {
+              const needsHydration = !ex.nom || !ex.muscle || !ex.equip || ex.img === undefined;
+              if(!needsHydration) return ex;
+              const libEx = lib.find(e => String(e.id) === String(ex.id)) || {};
+              if(!libEx.nom && !ex.nom) return ex; // nothing to hydrate from
+              dirty = true;
+              return Object.assign({}, ex, {
+                nom: ex.nom || libEx.nom || ('Exercice ' + (idx + 1)),
+                muscle: ex.muscle || libEx.muscle || '',
+                equip: ex.equip || libEx.equip || '',
+                equipment: ex.equipment || ex.equip || libEx.equip || '',
+                img: ex.img || libEx.img || '',
+                img2: ex.img2 || libEx.img2 || ''
+              });
+            });
+            if(dirty){
+              // Persist the hydrated version back to Firestore (fire & forget)
+              db.collection('clients').doc(key).collection('events').doc(ev.id)
+                .set(ev, {merge: true})
+                .catch(e => console.warn('rehydrate write err', e));
+            }
+          });
+        } catch(e){ console.warn('rehydrate err', e); }
         // Re-render calendar if we're on this client's calendar view
         try {
           if(window.S.cur && String(window.S.cur.clientId) === key &&
@@ -3800,6 +3830,20 @@ async function saveCalEvent() {
     if (seance) {
       event.seanceSnapshot = JSON.parse(JSON.stringify(seance));
       event.programName = prog.nom;
+      // Hydrate exercises with library data so the student app sees real names + images
+      if (Array.isArray(event.seanceSnapshot.exercises)) {
+        event.seanceSnapshot.exercises = event.seanceSnapshot.exercises.map((ex, idx) => {
+          const lib = (S.exercises || []).find(e => String(e.id) === String(ex.id)) || {};
+          return Object.assign({}, ex, {
+            nom: ex.nom || lib.nom || ('Exercice ' + (idx + 1)),
+            muscle: ex.muscle || lib.muscle || '',
+            equip: ex.equip || lib.equip || '',
+            equipment: ex.equipment || ex.equip || lib.equip || '',
+            img: ex.img || lib.img || '',
+            img2: ex.img2 || lib.img2 || ''
+          });
+        });
+      }
       // Auto-set nom from seance if user didn't customize
       if (!nom || nom === seance.nom) {
         event.nom = seance.nom || nom;
