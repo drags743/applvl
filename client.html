@@ -1767,18 +1767,22 @@ function startSession(){
     return;
   }
   activeSession = JSON.parse(JSON.stringify(session)); // deep clone
-  // Ensure every exercise has a series array
+  // Ensure every exercise has a series array + preserve coach-demanded target values
   activeSession.exercises.forEach(ex => {
     if(!ex.series || ex.series.length === 0){
       const sets = ex.sets || (ex.setsData ? ex.setsData.length : 3);
       ex.series = Array.from({length: sets}, (_, i) => {
         const sd = ex.setsData && ex.setsData[i];
-        return {
-          kg: sd ? +sd.poids || 0 : (ex.poids_cible || 0),
-          reps: sd ? +sd.reps || 10 : (ex.reps || 10),
-          rest: sd ? +sd.repos || 90 : 90,
-          done: false
-        };
+        const kg = sd ? +sd.poids || 0 : (ex.poids_cible || 0);
+        const reps = sd ? +sd.reps || 10 : (ex.reps || 10);
+        const rest = sd ? +sd.repos || 90 : 90;
+        return { kg, reps, rest, kg_target: kg, reps_target: reps, done: false };
+      });
+    } else {
+      // Series already exists — ensure target is set on each
+      ex.series.forEach(s => {
+        if(s.kg_target === undefined) s.kg_target = s.kg;
+        if(s.reps_target === undefined) s.reps_target = s.reps;
       });
     }
   });
@@ -1919,11 +1923,19 @@ function prevSeries(){
 }
 
 function finishSession(){
-  // Compute session stats BEFORE saving/clearing
+  // Guard: if already finishing, ignore double-clicks
+  if(window._finishing) return;
+  window._finishing = true;
+
+  // Snapshot session BEFORE clearing
+  const sessionSnapshot = activeSession;
+  const startTs = sessionStartTs;
+
+  // Compute session stats
   let totalKg = 0, totalReps = 0, seriesDone = 0, seriesTotal = 0;
-  if(activeSession){
-    for(const e of activeSession.exercises){
-      for(const s of e.series){
+  if(sessionSnapshot){
+    for(const e of sessionSnapshot.exercises){
+      for(const s of (e.series || [])){
         seriesTotal++;
         if(s.done){
           seriesDone++;
@@ -1935,79 +1947,155 @@ function finishSession(){
       }
     }
   }
-  const duration = sessionStartTs ? Math.floor((Date.now() - sessionStartTs)/1000) : 0;
+  const duration = startTs ? Math.floor((Date.now() - startTs)/1000) : 0;
   const mm = Math.floor(duration/60);
   const ss = duration % 60;
 
-  // Save record to localStorage (for future sync with coach via Firebase)
-  if(activeSession && currentClient){
-    const record = {
+  // Build record with target vs actual (demandé vs réalisé)
+  let record = null;
+  if(sessionSnapshot && currentClient){
+    record = {
       clientId: currentClient.id,
       date: new Date().toISOString(),
-      duration: duration,
-      sessionName: activeSession.nom,
+      duration,
+      sessionName: sessionSnapshot.nom,
+      eventId: sessionSnapshot.eventId || null,
       totalKg, totalReps, seriesDone, seriesTotal,
-      exercises: activeSession.exercises.map(e => ({
-        nom: e.nom,
-        muscle: e.muscle,
-        equipment: e.equipment,
-        series: e.series.map(s => ({
-          kg: s.kg_done ?? s.kg,
+      exercises: sessionSnapshot.exercises.map(e => ({
+        nom: e.nom, muscle: e.muscle, equipment: e.equipment,
+        series: (e.series || []).map(s => ({
+          kg_target: s.kg,            // ce que le coach a demandé (inchangé dans startSession)
+          reps_target: s.reps,
+          kg: s.kg_done ?? s.kg,       // ce que l'élève a réellement fait
           reps: s.reps_done ?? s.reps,
           rest: s.rest,
           done: s.done === true
         }))
       }))
     };
+
+    // Save locally
     try {
       const key = 'applvl.completed.' + currentClient.id;
       const arr = JSON.parse(localStorage.getItem(key) || '[]');
       arr.push(record);
       localStorage.setItem(key, JSON.stringify(arr));
-    } catch(e) { console.warn('Could not save session record', e); }
+    } catch(e) { console.warn('local save err', e); }
 
-    // Firestore sync — push completed session to coach dashboard
+    // Firestore sync
     if(isFirebaseAuthed() && !localStorage.getItem('applvl.admin')){
       const docId = String(Date.now());
       fbDb.collection('clients').doc(String(currentClient.id))
         .collection('completed').doc(docId)
-        .set({
-          ...record,
-          _ts: firebase.firestore.FieldValue.serverTimestamp()
-        })
-        .then(() => console.log('Session synced to coach'))
+        .set({ ...record, _ts: firebase.firestore.FieldValue.serverTimestamp() })
         .catch(e => console.warn('completed sync err', e));
 
-      // Clear the auto-saved active session (it's now completed)
+      // Mark the planned event as completed so it turns green on coach calendar
+      if(sessionSnapshot.eventId){
+        fbDb.collection('clients').doc(String(currentClient.id))
+          .collection('events').doc(sessionSnapshot.eventId)
+          .update({ completed: true, completedAt: new Date().toISOString(), completedDocId: docId })
+          .catch(e => console.warn('mark event done err', e));
+      }
+
+      // Clear auto-saved active session
       fbDb.collection('clients').doc(String(currentClient.id))
         .collection('activeSession').doc('current').delete()
         .catch(e => console.warn('autoSave clear err', e));
     }
   }
 
-  // Compare to last session (same name) for progression feedback
-  let deltaMsg = '';
+  // Compute per-exercise evolution vs previous session of same name
+  let evoHtml = '';
+  let globalDelta = 0, globalPrevTotal = 0;
   try {
     const key = 'applvl.completed.' + currentClient.id;
     const arr = JSON.parse(localStorage.getItem(key) || '[]');
-    const previous = arr.filter(r => r.sessionName === activeSession?.nom).slice(-2, -1)[0];
-    if(previous && previous.totalKg){
-      const delta = totalKg - previous.totalKg;
-      if(delta > 0) deltaMsg = `<div style="color:var(--green);font-weight:700;margin-top:6px;">+${Math.round(delta)} kg vs dernière séance 💪</div>`;
-      else if(delta < 0) deltaMsg = `<div style="color:var(--txt2);font-size:12px;margin-top:6px;">${Math.round(delta)} kg vs dernière séance · prochaine fois 👊</div>`;
-      else deltaMsg = `<div style="color:var(--txt2);font-size:12px;margin-top:6px;">Même volume qu'à la dernière séance</div>`;
+    const previousSessions = arr.filter(r => r.sessionName === sessionSnapshot?.nom && r.date !== record?.date);
+    const previous = previousSessions[previousSessions.length - 1];
+
+    if(previous && record){
+      globalPrevTotal = previous.totalKg || 0;
+      globalDelta = totalKg - globalPrevTotal;
+
+      const rows = record.exercises.map(currEx => {
+        const prevEx = (previous.exercises || []).find(pe => pe.nom === currEx.nom);
+        if(!prevEx) return null;
+
+        // Best set per exercise: max kg * reps
+        const bestCurr = (currEx.series || []).filter(s => s.done).reduce((b, s) => {
+          const v = (s.kg || 0) * (s.reps || 0);
+          return v > b.v ? {v, kg: s.kg, reps: s.reps} : b;
+        }, {v: 0, kg: 0, reps: 0});
+        const bestPrev = (prevEx.series || []).filter(s => s.done).reduce((b, s) => {
+          const v = (s.kg || 0) * (s.reps || 0);
+          return v > b.v ? {v, kg: s.kg, reps: s.reps} : b;
+        }, {v: 0, kg: 0, reps: 0});
+        if(bestCurr.v === 0 || bestPrev.v === 0) return null;
+
+        const dKg = bestCurr.kg - bestPrev.kg;
+        const dReps = bestCurr.reps - bestPrev.reps;
+        const delta = bestCurr.v - bestPrev.v;
+        const color = delta > 0 ? 'var(--green)' : (delta < 0 ? '#e74c3c' : 'var(--txt3)');
+        const arrow = delta > 0 ? '▲' : (delta < 0 ? '▼' : '═');
+        const deltaKgTxt = dKg > 0 ? `+${dKg}kg` : (dKg < 0 ? `${dKg}kg` : '=kg');
+        const deltaRepsTxt = dReps > 0 ? `+${dReps}r` : (dReps < 0 ? `${dReps}r` : '=r');
+
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--brd);">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em;">${currEx.nom}</div>
+            <div style="font-size:11px;color:var(--txt3);">${bestPrev.kg}kg × ${bestPrev.reps} → <strong style="color:var(--txt);">${bestCurr.kg}kg × ${bestCurr.reps}</strong></div>
+          </div>
+          <div style="color:${color};font-weight:700;font-size:12px;white-space:nowrap;margin-left:12px;text-align:right;">
+            ${arrow} ${deltaKgTxt} ${deltaRepsTxt}
+          </div>
+        </div>`;
+      }).filter(Boolean).join('');
+
+      if(rows){
+        evoHtml = `
+          <div style="background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:18px;width:100%;max-width:380px;margin-bottom:20px;text-align:left;">
+            <div style="font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:10px;">Évolution vs dernière séance</div>
+            ${rows}
+          </div>`;
+      }
     }
-  } catch(e){}
+  } catch(e){ console.warn('evo err', e); }
 
-  stopSession();
-  buzz([100, 50, 100, 50, 150]);
+  // Global delta banner
+  let globalBanner = '';
+  if(globalPrevTotal > 0){
+    const pct = (globalDelta / globalPrevTotal * 100).toFixed(1);
+    if(globalDelta > 0){
+      globalBanner = `<div style="background:rgba(46,204,113,.12);border:1px solid rgba(46,204,113,.3);color:var(--green);padding:10px 14px;border-radius:10px;margin-bottom:16px;font-weight:600;font-size:13px;text-align:center;">💪 +${Math.round(globalDelta)} kg (+${pct}%) vs dernière séance</div>`;
+    } else if(globalDelta < 0){
+      globalBanner = `<div style="background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.2);color:#e74c3c;padding:10px 14px;border-radius:10px;margin-bottom:16px;font-size:12px;text-align:center;">📉 ${Math.round(globalDelta)} kg (${pct}%) vs dernière séance · prochaine fois 👊</div>`;
+    } else {
+      globalBanner = `<div style="color:var(--txt3);font-size:12px;margin-bottom:16px;text-align:center;">Même volume qu'à la dernière séance</div>`;
+    }
+  }
 
-  document.body.innerHTML = `<div id="app"><div class="screen active session-done" style="display:flex;flex-direction:column;align-items:center;padding:50px 24px 40px;">
+  // FULL TEARDOWN — kill all running timers and state before showing end screen
+  try { if(durationInterval){ clearInterval(durationInterval); durationInterval = null; } } catch(e){}
+  try { if(timerInterval){ clearInterval(timerInterval); timerInterval = null; } } catch(e){}
+  try { if(_autoSaveTimer){ clearTimeout(_autoSaveTimer); _autoSaveTimer = null; } } catch(e){}
+  activeSession = null;
+  activeExIdx = 0;
+  activeSerIdx = 0;
+  sessionStartTs = null;
+  restDuration = 0;
+  restStartTs = 0;
+
+  try { buzz([100, 50, 100, 50, 150]); } catch(e){}
+
+  document.body.innerHTML = `<div id="app"><div class="screen active session-done" style="display:flex;flex-direction:column;align-items:center;padding:50px 24px 40px;overflow-y:auto;">
     <div class="big-check" style="width:80px;height:80px;border-radius:50%;background:var(--green);color:#000;display:inline-flex;align-items:center;justify-content:center;margin-bottom:20px;">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
-    <h2 style="font-family:'Montserrat',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px;">Séance terminée !</h2>
-    <p style="color:var(--txt3);font-size:13px;margin-bottom:24px;text-align:center;">Bravo, tes performances sont enregistrées.</p>
+    <h2 style="font-family:'Montserrat',sans-serif;font-size:24px;font-weight:800;margin-bottom:6px;">Bravo, séance terminée !</h2>
+    <p style="color:var(--txt3);font-size:13px;margin-bottom:24px;text-align:center;">Tes performances sont enregistrées.</p>
+
+    ${globalBanner}
 
     <div style="background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:18px;width:100%;max-width:380px;margin-bottom:20px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
@@ -2028,10 +2116,11 @@ function finishSession(){
           <div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;margin-top:2px;">séries</div>
         </div>
       </div>
-      ${deltaMsg}
     </div>
 
-    <button class="btn btn-p btn-block" style="max-width:380px;padding:14px;font-size:14px;font-weight:700;" onclick="location.reload()">Retour à l'accueil</button>
+    ${evoHtml}
+
+    <button class="btn btn-p btn-block" style="max-width:380px;padding:14px;font-size:14px;font-weight:700;" onclick="window._finishing=false;location.reload()">Retour à l'accueil</button>
   </div></div>`;
 }
 
