@@ -1508,21 +1508,33 @@ function renderAccueil(){
 
   // Today's task
   const today = new Date();
-  const session = APP.sessions[c.id];
+  const session = (typeof getSessionForDate === 'function')
+    ? getSessionForDate(c, today, today)
+    : APP.sessions[c.id];
   const taskEl = document.getElementById('today-task-body');
   if(session){
+    const sessTitle = session.nom || 'Séance';
+    const sessSubtitle = session.type || session.jour || '';
+    const sessDur = (typeof session.dureeTarget === 'number' && session.dureeTarget > 0)
+      ? session.dureeTarget : calculateSessionDuration(session);
+    const sessExoCount = (session.exercises || []).length;
+    const isDone = !!session.completed;
     taskEl.innerHTML = `
       <div style="background:var(--card2);border-radius:10px;padding:14px;">
         <div class="between" style="margin-bottom:8px;">
-          <span class="tag tag-red">SÉANCE DU JOUR</span>
-          <span style="font-size:11px;color:var(--txt3);">~${session.dureeTarget} min</span>
+          ${isDone
+            ? '<span class="tag" style="background:rgba(46,204,113,.18);border:1px solid rgba(46,204,113,.5);color:#2ecc71;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.1em;">SÉANCE TERMINÉE</span>'
+            : '<span class="tag tag-red">SÉANCE DU JOUR</span>'}
+          <span style="font-size:11px;color:var(--txt3);">~${sessDur} min</span>
         </div>
-        <div style="font-family:'Montserrat',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px;">${session.nom} — ${session.jour}</div>
-        <div style="font-size:12px;color:var(--txt2);margin-bottom:12px;">${session.type} · ${session.exercises.length} exercices</div>
-        <button class="btn btn-p btn-block" onclick="startSession()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          Commencer la séance
-        </button>
+        <div style="font-family:'Montserrat',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px;">${sessTitle}${sessSubtitle ? ' — ' + sessSubtitle : ''}</div>
+        <div style="font-size:12px;color:var(--txt2);margin-bottom:12px;">${sessExoCount} exercice${sessExoCount>1?'s':''}</div>
+        ${isDone
+          ? `<button class="btn btn-block" style="background:rgba(46,204,113,.15);border:1px solid rgba(46,204,113,.4);color:#2ecc71;" onclick="nav('sport')">Voir le détail</button>`
+          : `<button class="btn btn-p btn-block" onclick="nav('sport')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Commencer la séance
+            </button>`}
       </div>`;
   } else {
     taskEl.innerHTML = `
@@ -1563,7 +1575,7 @@ function buildWeightChart(hist){
    RENDER — SPORT
    ====================================================================== */
 // Sport view mode: 'day' (picker de jours) or 'week' (aperçu semaine + séances à venir)
-let sportViewMode = localStorage.getItem('applvl.sportView') || 'day';
+let sportViewMode = localStorage.getItem('applvl.sportView') || 'week';
 
 function toggleSportView(){
   sportViewMode = (sportViewMode === 'day') ? 'week' : 'day';
@@ -1754,14 +1766,22 @@ function renderSportWeek(c, today){
     for(const item of upcoming){
       const isToday = sameDay(item.date, today);
       const dateLabel = isToday ? 'Aujourd\u2019hui' : item.date.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'short'});
+      const sessTitle = item.session.nom || 'Séance';
+      const sessDur = (typeof item.session.dureeTarget === 'number' && item.session.dureeTarget > 0)
+        ? item.session.dureeTarget : calculateSessionDuration(item.session);
+      const sessExoCount = (item.session.exercises || []).length;
+      const isCompleted = !!item.session.completed;
+      const tagHtml = isCompleted
+        ? '<span class="tag" style="background:rgba(46,204,113,.18);border:1px solid rgba(46,204,113,.5);color:#2ecc71;font-size:9px;padding:3px 8px;border-radius:5px;letter-spacing:.1em;">TERMINÉE</span>'
+        : '<span class="tag tag-red" style="font-size:9px;">PROGRAMMÉE</span>';
       html += `<div class="card" style="padding:14px 16px;margin-bottom:10px;cursor:pointer;" onclick="selectedSportDate=new Date('${item.date.toISOString()}');sportViewMode='day';localStorage.setItem('applvl.sportView','day');renderSport();">
         <div class="between" style="margin-bottom:8px;">
-          <div style="font-size:10px;font-weight:700;color:var(--red-br);text-transform:uppercase;letter-spacing:.12em;">${dateLabel}</div>
-          <span class="tag tag-red" style="font-size:9px;">PROGRAMMÉE</span>
+          <div style="font-size:10px;font-weight:700;color:${isCompleted?'#2ecc71':'var(--red-br)'};text-transform:uppercase;letter-spacing:.12em;">${dateLabel}</div>
+          ${tagHtml}
         </div>
-        <div style="font-family:'Montserrat',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px;">${item.session.nom}</div>
-        <div style="font-size:11px;color:var(--txt2);">⏱ ${item.session.dureeTarget} min &nbsp;·&nbsp; 💪 ${item.session.exercises.length} exercices</div>
-        ${isToday ? `<button class="btn btn-p btn-block" style="margin-top:12px;padding:10px;font-size:12px;" onclick="event.stopPropagation();startSession()">
+        <div style="font-family:'Montserrat',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px;">${sessTitle}</div>
+        <div style="font-size:11px;color:var(--txt2);">⏱ ${sessDur} min &nbsp;·&nbsp; 💪 ${sessExoCount} exercice${sessExoCount>1?'s':''}</div>
+        ${isToday && !isCompleted ? `<button class="btn btn-p btn-block" style="margin-top:12px;padding:10px;font-size:12px;" onclick="event.stopPropagation();startSession()">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Commencer maintenant
         </button>` : ''}
@@ -1773,33 +1793,122 @@ function renderSportWeek(c, today){
   sessionsEl.innerHTML = html;
 }
 
+/* Compute total session duration in minutes:
+   - 2 minutes per active series (lift time)
+   - + sum of rest times (in seconds, converted to minutes)
+   Used as fallback when coach didn't specify a duration. */
+function calculateSessionDuration(session){
+  if(!session || !Array.isArray(session.exercises) || session.exercises.length === 0) return 30;
+  let totalSec = 0;
+  for(const ex of session.exercises){
+    let sets;
+    if(Array.isArray(ex.series) && ex.series.length > 0) sets = ex.series.length;
+    else if(Array.isArray(ex.setsData) && ex.setsData.length > 0) sets = ex.setsData.length;
+    else sets = +ex.sets || 3;
+    // 2 minutes (120 s) of active work per set
+    totalSec += sets * 120;
+    // Rest after each set (use per-set rest if available, else default 90s)
+    for(let i = 0; i < sets; i++){
+      let rest = 90;
+      if(ex.series && ex.series[i] && ex.series[i].rest != null) rest = +ex.series[i].rest || 90;
+      else if(ex.setsData && ex.setsData[i] && ex.setsData[i].repos != null) rest = +ex.setsData[i].repos || 90;
+      else if(ex.repos != null) rest = +ex.repos || 90;
+      totalSec += rest;
+    }
+  }
+  return Math.max(5, Math.round(totalSec / 60));
+}
+
+/* Normalize a session.exercises[i].series array into a uniform shape for rendering. */
+function getExoSeries(ex){
+  if(Array.isArray(ex.series) && ex.series.length > 0) return ex.series;
+  if(Array.isArray(ex.setsData) && ex.setsData.length > 0){
+    return ex.setsData.map(sd => ({
+      kg: +sd.poids || 0, reps: +sd.reps || 10, rest: +sd.repos || 90, done: false
+    }));
+  }
+  const sets = +ex.sets || 3;
+  return Array.from({length: sets}, () => ({
+    kg: +ex.poids_cible || 0, reps: +ex.reps || 10, rest: 90, done: false
+  }));
+}
+
 function buildSessionCard(session){
+  const isCompleted = !!session.completed;
+  const isInProgress = activeSession
+    && ((session.eventId && activeSession.eventId === session.eventId)
+        || (!session.eventId && !activeSession.eventId && activeSession.nom === session.nom));
+
+  // Defensive defaults — never let "undefined" reach the UI
+  const sessionTitle = session.nom || 'Séance';
+  const subtitle = session.type || session.jour || '';
+  const duration = (typeof session.dureeTarget === 'number' && session.dureeTarget > 0)
+    ? session.dureeTarget
+    : (typeof session.duree === 'number' && session.duree > 0 ? session.duree : calculateSessionDuration(session));
+  const exoCount = (session.exercises || []).length;
+
+  // Tag + background depending on state
+  let tagHtml, bgGradient;
+  if(isCompleted){
+    tagHtml = '<span class="tag" style="background:rgba(46,204,113,.18);border:1px solid rgba(46,204,113,.5);color:#2ecc71;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.1em;">TERMINÉE</span>';
+    bgGradient = 'linear-gradient(135deg,#0a2a14 0%,#1a4a2a 50%,#051a0a 100%)';
+  } else if(isInProgress){
+    tagHtml = '<span class="tag" style="background:rgba(231,76,60,.3);border:1px solid var(--red-br);color:#fff;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:.1em;">EN COURS</span>';
+    bgGradient = 'linear-gradient(135deg,#2a0a0a 0%,#4a1a1a 50%,#1a0505 100%)';
+  } else {
+    tagHtml = '<span class="tag tag-red">PROGRAMMÉE</span>';
+    bgGradient = 'linear-gradient(135deg,#2a0a0a 0%,#4a1a1a 50%,#1a0505 100%)';
+  }
+
+  // Action buttons depending on state
+  let actionsHtml;
+  if(isCompleted){
+    actionsHtml = `
+      <button class="btn" style="flex:1;justify-content:center;" onclick="modifyCompletedSession()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Modifier
+      </button>
+      <button class="btn" style="flex:1;justify-content:center;background:rgba(46,204,113,.15);border:1px solid rgba(46,204,113,.4);color:#2ecc71;" onclick="showSessionPreview()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        Terminée
+      </button>`;
+  } else if(isInProgress){
+    actionsHtml = `
+      <button class="btn" style="flex:1;justify-content:center;" onclick="showSessionPreview()">Aperçu</button>
+      <button class="btn btn-p" style="flex:1.5;justify-content:center;" onclick="resumeActiveSession()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Reprendre la séance
+      </button>`;
+  } else {
+    actionsHtml = `
+      <button class="btn" style="flex:1;justify-content:center;" onclick="showSessionPreview()">Aperçu</button>
+      <button class="btn btn-p" style="flex:1.5;justify-content:center;" onclick="startSession()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Commencer
+      </button>`;
+  }
+
   return `
       <div class="card" style="padding:0;overflow:hidden;position:relative;">
-        <div style="height:130px;background:linear-gradient(135deg,#2a0a0a 0%,#4a1a1a 50%,#1a0505 100%);position:relative;">
-          <div style="position:absolute;top:12px;right:12px;"><span class="tag tag-red">PROGRAMMÉE</span></div>
+        <div style="height:130px;background:${bgGradient};position:relative;">
+          <div style="position:absolute;top:12px;right:12px;">${tagHtml}</div>
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:.22;">
             <svg width="70" height="70" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5h11v11h-11z"/><path d="M2 12h4.5"/><path d="M17.5 12H22"/><path d="M4 9v6"/><path d="M20 9v6"/></svg>
           </div>
           <div style="position:absolute;bottom:12px;left:16px;right:16px;">
-            <div style="font-size:10px;font-weight:700;color:var(--red-br);text-transform:uppercase;letter-spacing:.15em;">${session.jour}</div>
-            <div style="font-family:'Montserrat',sans-serif;font-size:20px;font-weight:800;color:#fff;margin-top:2px;">${session.nom}</div>
-            <div style="font-size:11px;color:var(--txt2);margin-top:2px;">${session.type}</div>
+            ${subtitle ? `<div style="font-size:10px;font-weight:700;color:${isCompleted?'#2ecc71':'var(--red-br)'};text-transform:uppercase;letter-spacing:.15em;">${subtitle}</div>` : ''}
+            <div style="font-family:'Montserrat',sans-serif;font-size:20px;font-weight:800;color:#fff;margin-top:2px;">${sessionTitle}</div>
           </div>
         </div>
         <div style="padding:14px 16px;">
           <div class="between" style="margin-bottom:12px;">
             <div style="font-size:12px;color:var(--txt2);">
-              <span style="margin-right:14px;">⏱ ${session.dureeTarget} min</span>
-              <span>💪 ${session.exercises.length} exercices</span>
+              <span style="margin-right:14px;">⏱ ${duration} min</span>
+              <span>💪 ${exoCount} exercice${exoCount>1?'s':''}</span>
             </div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="btn" style="flex:1;justify-content:center;" onclick="showSessionPreview()">Aperçu</button>
-            <button class="btn btn-p" style="flex:1.5;justify-content:center;" onclick="startSession()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              Commencer
-            </button>
+            ${actionsHtml}
           </div>
         </div>
       </div>`;
@@ -1811,9 +1920,137 @@ function pickSportDate(offset){
 }
 
 function showSessionPreview(){
-  const session = APP.sessions[currentClient.id];
-  const msg = session.exercises.map((e,i)=>`${i+1}. ${e.nom} · ${e.series.length} séries`).join('\n');
-  alert('Aperçu de la séance :\n\n' + msg);
+  const today = new Date();
+  const session = getSessionForDate(currentClient, selectedSportDate || today, today);
+  if(!session || !Array.isArray(session.exercises) || session.exercises.length === 0){
+    toast('Aucune séance à afficher');
+    return;
+  }
+  const duration = (typeof session.dureeTarget === 'number' && session.dureeTarget > 0)
+    ? session.dureeTarget : calculateSessionDuration(session);
+  const isCompleted = !!session.completed;
+
+  let exosHtml = '';
+  session.exercises.forEach((ex, i) => {
+    const series = getExoSeries(ex);
+    const muscleStr = ex.muscle ? ` · ${ex.muscle}` : '';
+    const equipStr = ex.equip ? ` · ${ex.equip}` : '';
+    exosHtml += `<div style="border-bottom:1px solid var(--brd);padding:14px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'Montserrat',sans-serif;font-size:14px;font-weight:800;line-height:1.2;">${i+1}. ${ex.nom||'Exercice'}</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:3px;">${series.length} série${series.length>1?'s':''}${muscleStr}${equipStr}</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;">
+        ${series.map((s,si) => `<div style="background:var(--card2);border:1px solid var(--brd);border-radius:8px;padding:6px 10px;font-size:11px;font-family:'DM Sans',sans-serif;">
+          <span style="color:var(--txt3);">S${si+1}</span> · <span style="font-weight:700;">${s.kg||0}kg</span> × <span style="font-weight:700;">${s.reps||0}</span> <span style="color:var(--txt3);">· ${s.rest||90}s</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  });
+
+  // Build overlay
+  const ov = document.createElement('div');
+  ov.id = 'session-preview-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);';
+  ov.innerHTML = `
+    <div style="width:100%;max-width:480px;background:var(--bg);border-top-left-radius:18px;border-top-right-radius:18px;max-height:88vh;display:flex;flex-direction:column;animation:slideUp .25s cubic-bezier(.2,.8,.3,1.2);">
+      <div style="padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-family:'Montserrat',sans-serif;font-size:18px;font-weight:800;line-height:1.1;">${session.nom||'Séance'}</div>
+          <div style="font-size:11px;color:var(--txt3);margin-top:3px;">⏱ ${duration} min · 💪 ${session.exercises.length} exercices${isCompleted ? ' · <span style="color:#2ecc71;font-weight:700;">TERMINÉE</span>' : ''}</div>
+        </div>
+        <button onclick="document.getElementById('session-preview-overlay').remove()" style="background:transparent;border:none;color:var(--txt2);cursor:pointer;padding:8px;font-size:20px;line-height:1;">×</button>
+      </div>
+      <div style="overflow-y:auto;padding:0 20px 20px;-webkit-overflow-scrolling:touch;">
+        ${exosHtml}
+      </div>
+    </div>
+  `;
+  ov.addEventListener('click', (e) => { if(e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+}
+
+/* Allow student to re-open a finished session to fix a typo / forgotten set.
+   Loads the most recent completed record for this session and re-enters the
+   session screen with all values pre-filled. When re-finished, overwrites the
+   previous record instead of creating a new one. */
+function modifyCompletedSession(){
+  const today = new Date();
+  const session = getSessionForDate(currentClient, selectedSportDate || today, today);
+  if(!session){ toast('Séance introuvable'); return; }
+
+  // Load most recent completed record for this event (or session by name)
+  let record = null;
+  try {
+    const arr = JSON.parse(localStorage.getItem('applvl.completed.' + currentClient.id) || '[]');
+    if(session.eventId){
+      record = [...arr].reverse().find(r => r.eventId === session.eventId);
+    }
+    if(!record){
+      record = [...arr].reverse().find(r => r.sessionName === session.nom);
+    }
+  } catch(e){}
+
+  if(!record){
+    toast('Aucun historique pour modifier');
+    return;
+  }
+
+  if(!confirm('Modifier ta séance terminée ?\n\nTes répétitions et poids seront pré-remplis.')) return;
+
+  // Rebuild activeSession using record data (kg/reps already filled, all done)
+  activeSession = {
+    nom: session.nom,
+    sessionName: session.nom,
+    eventId: session.eventId || null,
+    programId: session.programId || null,
+    seanceIdx: session.seanceIdx,
+    isModification: true,
+    previousDocId: record.docId || record._docId || null,
+    exercises: (record.exercises || []).map(rex => {
+      const origEx = session.exercises.find(e => e.nom === rex.nom) || {};
+      return {
+        nom: rex.nom,
+        muscle: origEx.muscle || rex.muscle || '',
+        equip: origEx.equip || rex.equip || '',
+        series: (rex.series || []).map(s => ({
+          kg: s.kg || 0,
+          reps: s.reps || 0,
+          rest: s.rest || 90,
+          kg_target: s.kg_target ?? s.kg ?? 0,
+          reps_target: s.reps_target ?? s.reps ?? 10,
+          done: !!s.done
+        }))
+      };
+    })
+  };
+  activeSession.exercises = activeSession.exercises.filter(ex => ex && Array.isArray(ex.series) && ex.series.length > 0);
+  if(activeSession.exercises.length === 0){
+    toast('Erreur : séance vide');
+    activeSession = null;
+    return;
+  }
+  activeExIdx = 0;
+  activeSerIdx = 0;
+  sessionStartTs = Date.now();
+  startDurationTimer();
+  renderExo();
+  toast('Modifie tes séries puis termine à nouveau');
+  nav('exo');
+}
+
+/* Resume the in-progress session (when student tapped "Reprendre la séance" from the day view) */
+function resumeActiveSession(){
+  if(!activeSession || !Array.isArray(activeSession.exercises) || activeSession.exercises.length === 0){
+    toast('Aucune séance en cours');
+    return;
+  }
+  if(!sessionStartTs) sessionStartTs = Date.now();
+  startDurationTimer();
+  renderExo();
+  nav('exo');
 }
 
 /* ======================================================================
@@ -2066,21 +2303,34 @@ function _finishSessionInner(){
       }))
     };
 
-    // Save locally
+    // Save locally — overwrite previous record if we're in modification mode
     try {
       const key = 'applvl.completed.' + currentClient.id;
       const arr = JSON.parse(localStorage.getItem(key) || '[]');
-      arr.push(record);
+      let writeIdx = -1;
+      if(sessionSnapshot.isModification){
+        // Find most recent record matching this event/session and replace it
+        for(let i = arr.length - 1; i >= 0; i--){
+          if(sessionSnapshot.eventId && arr[i].eventId === sessionSnapshot.eventId){ writeIdx = i; break; }
+          if(!sessionSnapshot.eventId && arr[i].sessionName === sessionSnapshot.nom){ writeIdx = i; break; }
+        }
+      }
+      if(writeIdx >= 0){ arr[writeIdx] = {...record, modifiedAt: new Date().toISOString()}; }
+      else { arr.push(record); }
       localStorage.setItem(key, JSON.stringify(arr));
     } catch(e) { console.warn('local save err', e); }
 
     // Firestore sync — wrap each call separately so one failure doesn't stop others
     if(isFirebaseAuthed() && !localStorage.getItem('applvl.admin')){
-      const docId = String(Date.now());
+      // Reuse previous docId if modifying, else create new
+      const docId = (sessionSnapshot.isModification && sessionSnapshot.previousDocId)
+        ? String(sessionSnapshot.previousDocId)
+        : String(Date.now());
       try {
         fbDb.collection('clients').doc(String(currentClient.id))
           .collection('completed').doc(docId)
-          .set({ ...record, _ts: firebase.firestore.FieldValue.serverTimestamp() })
+          .set({ ...record, _ts: firebase.firestore.FieldValue.serverTimestamp(),
+                 ...(sessionSnapshot.isModification ? {modifiedAt: new Date().toISOString()} : {}) })
           .catch(e => console.warn('completed sync err', e));
       } catch(e){ console.warn('completed set err', e); }
 
