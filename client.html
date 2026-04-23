@@ -691,61 +691,49 @@ const fbDb = firebase.firestore();
 
 <!-- ========== NUTRITION ========== -->
 <div class="screen" id="screen-nutrition">
-  <div class="top-bar">
-    <div><h1>Nutrition</h1><div class="sub">Aujourd'hui</div></div>
+  <!-- Title + date -->
+  <div style="padding:10px 16px 8px;">
+    <h1 style="margin:0;font-family:'Montserrat',sans-serif;font-size:22px;font-weight:700;letter-spacing:-0.3px;">Nutrition</h1>
+    <div id="nut-date-label" style="font-size:11px;color:var(--txt3);margin-top:2px;">Aujourd'hui</div>
   </div>
 
   <div class="date-row" id="nut-dates"></div>
 
-  <!-- Grand cercle calories -->
-  <div class="card">
-    <div style="display:flex;align-items:center;gap:20px;padding:8px 4px;">
-      <div style="position:relative;width:140px;height:140px;flex-shrink:0;">
-        <svg viewBox="0 0 140 140" width="140" height="140">
-          <circle cx="70" cy="70" r="60" fill="none" stroke="var(--card2)" stroke-width="10"/>
-          <circle id="kcal-ring" cx="70" cy="70" r="60" fill="none" stroke="var(--red)" stroke-width="10" stroke-dasharray="0 377" stroke-linecap="round" transform="rotate(-90 70 70)"/>
-        </svg>
-        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-          <div style="font-family:'Montserrat',sans-serif;font-size:28px;font-weight:900;line-height:1;" id="kcal-remain">2000</div>
-          <div style="font-size:10px;color:var(--txt3);margin-top:4px;text-align:center;">Calories<br>restantes</div>
-        </div>
+  <!-- Summary card with horizontal progress bar -->
+  <div style="margin:6px 14px 12px;background:#111;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px 13px;">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;">
+      <div>
+        <span id="kcal-eaten" style="font-family:'Montserrat',sans-serif;font-weight:600;font-size:22px;letter-spacing:-0.3px;">0</span>
+        <span style="font-size:11px;color:var(--txt3);margin-left:4px;">/ <span id="kcal-target">0</span> kcal</span>
       </div>
-      <div style="flex:1;">
-        <div style="margin-bottom:16px;">
-          <div style="font-family:'Montserrat',sans-serif;font-size:22px;font-weight:800;" id="kcal-eaten">0</div>
-          <div style="font-size:11px;color:var(--txt3);">Mangées</div>
-        </div>
-        <div>
-          <div style="font-family:'Montserrat',sans-serif;font-size:22px;font-weight:800;" id="kcal-burned">0</div>
-          <div style="font-size:11px;color:var(--txt3);">Brûlées</div>
-        </div>
-      </div>
+      <div id="kcal-pct" style="font-size:10px;color:#2ecc71;font-weight:600;">0%</div>
     </div>
-
-    <!-- Macros -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding-top:14px;border-top:1px solid var(--brd);margin-top:10px;">
+    <div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-bottom:10px;">
+      <div id="kcal-bar" style="width:0%;height:100%;background:var(--red);transition:width .3s ease;"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
       <div>
-        <div style="font-size:11px;color:var(--txt2);font-weight:500;">Glucides</div>
-        <div class="progress" style="margin:6px 0 4px;"><div id="m-gluc-bar" style="width:0%;background:var(--orange);"></div></div>
-        <div style="font-size:11px;color:var(--txt3);"><span id="m-gluc">0 / 0 g</span></div>
+        <div style="font-size:9px;color:var(--txt3);font-weight:600;letter-spacing:.05em;text-transform:uppercase;">Protéines</div>
+        <div style="font-size:13px;font-weight:600;margin-top:2px;"><span id="m-prot-val">0</span><span style="font-size:10px;color:var(--txt3);font-weight:400;"> / <span id="m-prot-tg">0</span> g</span></div>
       </div>
       <div>
-        <div style="font-size:11px;color:var(--txt2);font-weight:500;">Protéines</div>
-        <div class="progress" style="margin:6px 0 4px;"><div id="m-prot-bar" style="width:0%;"></div></div>
-        <div style="font-size:11px;color:var(--txt3);"><span id="m-prot">0 / 0 g</span></div>
+        <div style="font-size:9px;color:var(--txt3);font-weight:600;letter-spacing:.05em;text-transform:uppercase;">Glucides</div>
+        <div style="font-size:13px;font-weight:600;margin-top:2px;"><span id="m-gluc-val">0</span><span style="font-size:10px;color:var(--txt3);font-weight:400;"> / <span id="m-gluc-tg">0</span> g</span></div>
       </div>
       <div>
-        <div style="font-size:11px;color:var(--txt2);font-weight:500;">Lipides</div>
-        <div class="progress" style="margin:6px 0 4px;"><div id="m-lip-bar" style="width:0%;background:var(--blue);"></div></div>
-        <div style="font-size:11px;color:var(--txt3);"><span id="m-lip">0 / 0 g</span></div>
+        <div style="font-size:9px;color:var(--txt3);font-weight:600;letter-spacing:.05em;text-transform:uppercase;">Lipides</div>
+        <div style="font-size:13px;font-weight:600;margin-top:2px;"><span id="m-lip-val">0</span><span style="font-size:10px;color:var(--txt3);font-weight:400;"> / <span id="m-lip-tg">0</span> g</span></div>
       </div>
     </div>
   </div>
 
-  <!-- Repas -->
-  <div class="between" style="padding:8px 20px;">
-    <div style="font-family:'Montserrat',sans-serif;font-size:15px;font-weight:800;">Repas</div>
-    <div style="font-size:11px;color:var(--txt3);">4 repas / jour</div>
+  <!-- Repas du jour header + Templates button -->
+  <div style="padding:0 16px 6px;display:flex;justify-content:space-between;align-items:center;">
+    <div style="font-size:10px;color:var(--txt3);font-weight:600;letter-spacing:.08em;text-transform:uppercase;">Repas du jour</div>
+    <button onclick="openAllTemplatesMenu()" style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--txt2);background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:3px 8px;border-radius:5px;cursor:pointer;font-family:inherit;">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      <span>Templates</span>
+    </button>
   </div>
   <div id="nut-meals"></div>
 
@@ -1061,6 +1049,121 @@ const ALIMENTS_DB = [
   {id:'a58',nom:'Orange',kcal:47,prot:1,gluc:12,lip:0,emoji:'🍊'},
   {id:'a59',nom:'Pommes de terre',kcal:77,prot:2,gluc:17,lip:0,emoji:'🥔'},
   {id:'a60',nom:'Quinoa cuit',kcal:120,prot:4,gluc:21,lip:2,emoji:'🌾'},
+  // Protéines animales
+  {id:'a100',nom:'Steak de bœuf 15%',kcal:195,prot:26,gluc:0,lip:10,emoji:'🥩'},
+  {id:'a101',nom:'Filet mignon de porc',kcal:143,prot:21,gluc:0,lip:6,emoji:'🥩'},
+  {id:'a102',nom:'Saumon fumé',kcal:180,prot:25,gluc:0,lip:9,emoji:'🐟'},
+  {id:'a103',nom:'Sardines à l\u2019huile',kcal:208,prot:25,gluc:0,lip:12,emoji:'🐟'},
+  {id:'a104',nom:'Maquereau',kcal:205,prot:19,gluc:0,lip:14,emoji:'🐟'},
+  {id:'a105',nom:'Crevettes',kcal:99,prot:24,gluc:0,lip:0,emoji:'🦐'},
+  {id:'a106',nom:'Blancs d\u2019œuf',kcal:52,prot:11,gluc:1,lip:0,emoji:'🥚'},
+  {id:'a107',nom:'Thon frais',kcal:144,prot:23,gluc:0,lip:5,emoji:'🐟'},
+  {id:'a108',nom:'Cabillaud',kcal:82,prot:18,gluc:0,lip:1,emoji:'🐟'},
+  // Laitiers & shakes
+  {id:'a110',nom:'Skyr nature',kcal:63,prot:11,gluc:4,lip:0,emoji:'🥛'},
+  {id:'a111',nom:'Petit-suisse 0%',kcal:45,prot:9,gluc:3,lip:0,emoji:'🥛'},
+  {id:'a112',nom:'Cottage cheese',kcal:98,prot:11,gluc:3,lip:4,emoji:'🥛'},
+  {id:'a113',nom:'Caséine micellaire',kcal:370,prot:80,gluc:5,lip:3,emoji:'🥤'},
+  {id:'a114',nom:'Lait écrémé',kcal:35,prot:3,gluc:5,lip:0,emoji:'🥛'},
+  {id:'a115',nom:'Lait entier',kcal:64,prot:3,gluc:5,lip:4,emoji:'🥛'},
+  {id:'a116',nom:'Yaourt nature',kcal:61,prot:4,gluc:5,lip:3,emoji:'🥛'},
+  {id:'a117',nom:'Mozzarella',kcal:254,prot:18,gluc:2,lip:19,emoji:'🧀'},
+  {id:'a118',nom:'Feta',kcal:264,prot:14,gluc:4,lip:21,emoji:'🧀'},
+  {id:'a119',nom:'Parmesan',kcal:431,prot:38,gluc:4,lip:29,emoji:'🧀'},
+  // Féculents
+  {id:'a120',nom:'Flocons d\u2019avoine sans gluten',kcal:370,prot:13,gluc:59,lip:7,emoji:'🌾'},
+  {id:'a121',nom:'Riz thaï',kcal:349,prot:7,gluc:78,lip:1,emoji:'🍚'},
+  {id:'a122',nom:'Boulgour cuit',kcal:83,prot:3,gluc:19,lip:0,emoji:'🌾'},
+  {id:'a123',nom:'Semoule de couscous cuite',kcal:112,prot:4,gluc:23,lip:0,emoji:'🌾'},
+  {id:'a124',nom:'Polenta cuite',kcal:85,prot:2,gluc:18,lip:0,emoji:'🌽'},
+  {id:'a125',nom:'Pain blanc',kcal:265,prot:9,gluc:49,lip:3,emoji:'🍞'},
+  {id:'a126',nom:'Pain de mie complet',kcal:246,prot:9,gluc:44,lip:3,emoji:'🍞'},
+  {id:'a127',nom:'Pain pita',kcal:275,prot:9,gluc:55,lip:1,emoji:'🫓'},
+  {id:'a128',nom:'Tortilla wrap',kcal:306,prot:8,gluc:52,lip:7,emoji:'🌯'},
+  {id:'a129',nom:'Galettes de riz',kcal:382,prot:8,gluc:82,lip:3,emoji:'🍘'},
+  {id:'a130',nom:'Galettes de maïs',kcal:385,prot:7,gluc:81,lip:3,emoji:'🌽'},
+  {id:'a131',nom:'Cornflakes',kcal:378,prot:7,gluc:84,lip:1,emoji:'🥣'},
+  {id:'a132',nom:'Granola',kcal:471,prot:10,gluc:64,lip:20,emoji:'🥣'},
+  // Légumes
+  {id:'a140',nom:'Carottes',kcal:41,prot:1,gluc:10,lip:0,emoji:'🥕'},
+  {id:'a141',nom:'Courgettes',kcal:17,prot:1,gluc:3,lip:0,emoji:'🥒'},
+  {id:'a142',nom:'Poivrons',kcal:26,prot:1,gluc:6,lip:0,emoji:'🫑'},
+  {id:'a143',nom:'Champignons de Paris',kcal:22,prot:3,gluc:3,lip:0,emoji:'🍄'},
+  {id:'a144',nom:'Asperges',kcal:20,prot:2,gluc:4,lip:0,emoji:'🌱'},
+  {id:'a145',nom:'Chou-fleur',kcal:25,prot:2,gluc:5,lip:0,emoji:'🥦'},
+  {id:'a146',nom:'Salade verte',kcal:15,prot:1,gluc:3,lip:0,emoji:'🥬'},
+  {id:'a147',nom:'Concombre',kcal:16,prot:1,gluc:3,lip:0,emoji:'🥒'},
+  {id:'a148',nom:'Oignon',kcal:40,prot:1,gluc:9,lip:0,emoji:'🧅'},
+  {id:'a149',nom:'Ail',kcal:149,prot:6,gluc:33,lip:1,emoji:'🧄'},
+  {id:'a150',nom:'Maïs',kcal:86,prot:3,gluc:19,lip:1,emoji:'🌽'},
+  {id:'a151',nom:'Petits pois',kcal:81,prot:5,gluc:14,lip:0,emoji:'🫛'},
+  // Fruits
+  {id:'a160',nom:'Poire',kcal:57,prot:0,gluc:15,lip:0,emoji:'🍐'},
+  {id:'a161',nom:'Kiwi',kcal:61,prot:1,gluc:15,lip:1,emoji:'🥝'},
+  {id:'a162',nom:'Ananas',kcal:50,prot:1,gluc:13,lip:0,emoji:'🍍'},
+  {id:'a163',nom:'Mangue',kcal:60,prot:1,gluc:15,lip:0,emoji:'🥭'},
+  {id:'a164',nom:'Fraises',kcal:32,prot:1,gluc:8,lip:0,emoji:'🍓'},
+  {id:'a165',nom:'Myrtilles',kcal:57,prot:1,gluc:14,lip:0,emoji:'🫐'},
+  {id:'a166',nom:'Framboises',kcal:52,prot:1,gluc:12,lip:1,emoji:'🍓'},
+  {id:'a167',nom:'Pastèque',kcal:30,prot:1,gluc:8,lip:0,emoji:'🍉'},
+  {id:'a168',nom:'Melon',kcal:34,prot:1,gluc:8,lip:0,emoji:'🍈'},
+  {id:'a169',nom:'Raisin',kcal:69,prot:1,gluc:18,lip:0,emoji:'🍇'},
+  {id:'a170',nom:'Datte medjool',kcal:277,prot:2,gluc:75,lip:0,emoji:'🌴'},
+  {id:'a171',nom:'Abricots secs',kcal:241,prot:3,gluc:63,lip:0,emoji:'🍑'},
+  {id:'a172',nom:'Pruneaux',kcal:240,prot:2,gluc:64,lip:0,emoji:'🍇'},
+  // Oléagineux & graines
+  {id:'a180',nom:'Noix de cajou',kcal:553,prot:18,gluc:30,lip:44,emoji:'🌰'},
+  {id:'a181',nom:'Noisettes',kcal:628,prot:15,gluc:17,lip:61,emoji:'🌰'},
+  {id:'a182',nom:'Noix de pécan',kcal:691,prot:9,gluc:14,lip:72,emoji:'🌰'},
+  {id:'a183',nom:'Pistaches',kcal:562,prot:20,gluc:28,lip:45,emoji:'🥜'},
+  {id:'a184',nom:'Graines de chia',kcal:486,prot:17,gluc:42,lip:31,emoji:'🌱'},
+  {id:'a185',nom:'Graines de lin',kcal:534,prot:18,gluc:29,lip:42,emoji:'🌱'},
+  {id:'a186',nom:'Graines de courge',kcal:559,prot:30,gluc:11,lip:49,emoji:'🎃'},
+  {id:'a187',nom:'Graines de tournesol',kcal:584,prot:21,gluc:20,lip:51,emoji:'🌻'},
+  {id:'a188',nom:'Beurre d\u2019amande',kcal:614,prot:21,gluc:19,lip:56,emoji:'🥜'},
+  // Légumineuses & végétal
+  {id:'a200',nom:'Pois chiches cuits',kcal:164,prot:9,gluc:27,lip:3,emoji:'🫘'},
+  {id:'a201',nom:'Haricots rouges cuits',kcal:127,prot:9,gluc:23,lip:1,emoji:'🫘'},
+  {id:'a202',nom:'Haricots blancs cuits',kcal:139,prot:10,gluc:25,lip:1,emoji:'🫘'},
+  {id:'a203',nom:'Tofu nature',kcal:76,prot:8,gluc:2,lip:5,emoji:'🟨'},
+  {id:'a204',nom:'Tofu fumé',kcal:150,prot:15,gluc:2,lip:9,emoji:'🟨'},
+  {id:'a205',nom:'Tempeh',kcal:193,prot:19,gluc:9,lip:11,emoji:'🟨'},
+  {id:'a206',nom:'Edamame',kcal:121,prot:12,gluc:9,lip:5,emoji:'🫛'},
+  // Boissons & liquides
+  {id:'a220',nom:'Eau de coco',kcal:19,prot:0,gluc:4,lip:0,emoji:'🥥'},
+  {id:'a221',nom:'Jus d\u2019orange',kcal:45,prot:1,gluc:10,lip:0,emoji:'🧃'},
+  {id:'a222',nom:'Lait de soja',kcal:33,prot:3,gluc:1,lip:2,emoji:'🥛'},
+  {id:'a223',nom:'Lait de coco',kcal:197,prot:2,gluc:3,lip:21,emoji:'🥥'},
+  {id:'a224',nom:'Boisson de riz',kcal:49,prot:0,gluc:10,lip:1,emoji:'🥛'},
+  {id:'a225',nom:'Café noir',kcal:2,prot:0,gluc:0,lip:0,emoji:'☕'},
+  {id:'a226',nom:'Thé vert',kcal:1,prot:0,gluc:0,lip:0,emoji:'🍵'},
+  // Sucré & snacks
+  {id:'a240',nom:'Chocolat noir 70%',kcal:598,prot:8,gluc:46,lip:43,emoji:'🍫'},
+  {id:'a241',nom:'Chocolat au lait',kcal:535,prot:8,gluc:59,lip:30,emoji:'🍫'},
+  {id:'a242',nom:'Barre protéinée',kcal:380,prot:30,gluc:35,lip:12,emoji:'🍫'},
+  {id:'a243',nom:'Barre de céréales',kcal:400,prot:6,gluc:65,lip:13,emoji:'🥨'},
+  {id:'a244',nom:'Biscotte',kcal:390,prot:11,gluc:74,lip:6,emoji:'🍞'},
+  {id:'a245',nom:'Pâte à tartiner chocolat',kcal:541,prot:6,gluc:57,lip:31,emoji:'🍫'},
+  {id:'a246',nom:'Sirop d\u2019érable',kcal:260,prot:0,gluc:67,lip:0,emoji:'🍁'},
+  {id:'a247',nom:'Sucre blanc',kcal:387,prot:0,gluc:100,lip:0,emoji:'🍬'},
+  {id:'a248',nom:'Cassonade',kcal:380,prot:0,gluc:98,lip:0,emoji:'🍬'},
+  // Matières grasses
+  {id:'a260',nom:'Beurre doux',kcal:717,prot:1,gluc:1,lip:81,emoji:'🧈'},
+  {id:'a261',nom:'Beurre de coco',kcal:660,prot:7,gluc:24,lip:57,emoji:'🥥'},
+  {id:'a262',nom:'Huile de coco',kcal:862,prot:0,gluc:0,lip:100,emoji:'🥥'},
+  {id:'a263',nom:'Huile de colza',kcal:884,prot:0,gluc:0,lip:100,emoji:'🌻'},
+  {id:'a264',nom:'Huile de tournesol',kcal:884,prot:0,gluc:0,lip:100,emoji:'🌻'},
+  {id:'a265',nom:'Mayonnaise',kcal:680,prot:1,gluc:1,lip:75,emoji:'🫙'},
+  {id:'a266',nom:'Crème fraîche 15%',kcal:165,prot:3,gluc:3,lip:15,emoji:'🥛'},
+  {id:'a267',nom:'Crème fraîche 30%',kcal:299,prot:2,gluc:3,lip:30,emoji:'🥛'},
+  // Plats & prêt-à-manger
+  {id:'a280',nom:'Pizza margherita',kcal:266,prot:11,gluc:33,lip:10,emoji:'🍕'},
+  {id:'a281',nom:'Sushi saumon avocat',kcal:200,prot:8,gluc:30,lip:5,emoji:'🍣'},
+  {id:'a282',nom:'Kebab',kcal:215,prot:15,gluc:18,lip:10,emoji:'🥙'},
+  {id:'a283',nom:'Sandwich jambon-beurre',kcal:260,prot:12,gluc:35,lip:8,emoji:'🥪'},
+  {id:'a284',nom:'Pâtes bolognaise',kcal:160,prot:8,gluc:20,lip:5,emoji:'🍝'},
+  {id:'a285',nom:'Hamburger maison',kcal:295,prot:17,gluc:24,lip:14,emoji:'🍔'},
+  {id:'a286',nom:'Frites maison',kcal:312,prot:4,gluc:41,lip:15,emoji:'🍟'},
 ];
 
 // Date navigation state (one per tab)
@@ -1492,8 +1595,55 @@ function attachEventsListener(uid){
         try { if(typeof renderAccueil === 'function') renderAccueil(); } catch(e){}
         try { if(typeof renderSport === 'function') renderSport(); } catch(e){}
         try { if(typeof renderCalendar === 'function') renderCalendar(); } catch(e){}
+        // If the student is currently doing a session, refresh its identity
+        // (nom, muscle, equip, img) from the updated event snapshot so that
+        // coach-side edits to the exercise library propagate live on-screen.
+        try { refreshActiveSessionFromEvents(arr); } catch(e){ console.warn('refresh active err', e); }
       }
     }, err => console.warn('events listener err', err));
+}
+
+/* If there's an active session in progress and the incoming events array contains
+   an event matching it, overlay the fresh exercise identity fields (nom/img/muscle/equip)
+   onto activeSession WITHOUT touching the in-progress series state (kg/reps/done). */
+function refreshActiveSessionFromEvents(events){
+  if(typeof activeSession === 'undefined' || !activeSession) return;
+  if(!Array.isArray(activeSession.exercises)) return;
+  // Find the event matching our active session
+  let ev = null;
+  if(activeSession.eventId){
+    ev = events.find(e => e && e.id === activeSession.eventId);
+  }
+  if(!ev && activeSession.sessionName){
+    ev = events.find(e => e && e.nom === activeSession.sessionName);
+  }
+  if(!ev || !ev.seanceSnapshot || !Array.isArray(ev.seanceSnapshot.exercises)) return;
+  let changed = false;
+  activeSession.exercises.forEach((ex, i) => {
+    // Try to match by id first, fallback to name
+    const fresh = ev.seanceSnapshot.exercises.find(e => String(e.id) === String(ex.id))
+               || ev.seanceSnapshot.exercises[i];
+    if(!fresh) return;
+    const newNom = fresh.nom || ex.nom;
+    const newMuscle = fresh.muscle || ex.muscle || '';
+    const newEquip = fresh.equip || fresh.equipment || ex.equip || ex.equipment || '';
+    const newImg = fresh.img || '';
+    const newImg2 = fresh.img2 || '';
+    if(ex.nom !== newNom || ex.muscle !== newMuscle
+       || ex.equip !== newEquip || (ex.img||'') !== newImg){
+      changed = true;
+      ex.nom = newNom;
+      ex.muscle = newMuscle;
+      ex.equip = newEquip;
+      ex.equipment = newEquip;
+      ex.img = newImg;
+      ex.img2 = newImg2;
+    }
+  });
+  if(changed){
+    try { if(typeof renderExo === 'function') renderExo(); } catch(e){}
+    try { if(typeof renderSeriesView === 'function') renderSeriesView(); } catch(e){}
+  }
 }
 
 /* Programs listener: coach assigns programs → student sees them */
@@ -3268,28 +3418,38 @@ function renderNutrition(){
   // Load meals for selected day + compute totals
   const meals = loadDayMeals(selected);
   const totals = computeDayTotals(meals);
-  const remain = Math.max(0, c.kcal - totals.kcal);
-  const pctKcal = Math.min(100, totals.kcal / c.kcal * 100);
+  const pctKcal = c.kcal ? Math.min(100, Math.round(totals.kcal / c.kcal * 100)) : 0;
 
-  document.getElementById('kcal-remain').textContent = remain;
-  document.getElementById('kcal-eaten').textContent = totals.kcal;
-  document.getElementById('kcal-burned').textContent = '0';
-
-  // Ring
-  const circ = 2 * Math.PI * 60;
-  const ring = document.getElementById('kcal-ring');
-  ring.setAttribute('stroke-dasharray', `${circ * pctKcal/100} ${circ}`);
-
-  // Macros with progress bars
-  function macro(id, v, target, color){
-    const pct = target ? Math.min(100, v/target*100) : 0;
-    document.getElementById('m-'+id).textContent = `${v} / ${target} g`;
-    document.getElementById('m-'+id+'-bar').style.width = pct + '%';
-    if(color) document.getElementById('m-'+id+'-bar').style.background = color;
+  // Date label ("Aujourd'hui · mer. 22 avril" or similar)
+  const dateLabelEl = document.getElementById('nut-date-label');
+  if(dateLabelEl){
+    const prefix = sameDay(selected, today) ? 'Aujourd\u2019hui' : selected.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+    const suffix = sameDay(selected, today) ? ` \u00b7 ${selected.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}` : '';
+    dateLabelEl.textContent = prefix + suffix;
   }
-  macro('gluc', totals.gluc, c.gluc, 'var(--orange)');
-  macro('prot', totals.prot, c.prot, 'var(--red)');
-  macro('lip',  totals.lip,  c.lip,  'var(--blue)');
+
+  // Kcal row
+  const setText = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+  setText('kcal-eaten', Math.round(totals.kcal).toLocaleString('fr-FR').replace(/,/g,' '));
+  setText('kcal-target', (c.kcal || 0).toLocaleString('fr-FR').replace(/,/g,' '));
+  setText('kcal-pct', pctKcal + '%');
+  const kcalBar = document.getElementById('kcal-bar');
+  if(kcalBar) kcalBar.style.width = pctKcal + '%';
+  // Color the % based on how much is consumed
+  const pctEl = document.getElementById('kcal-pct');
+  if(pctEl){
+    if(pctKcal < 70) pctEl.style.color = '#2ecc71';
+    else if(pctKcal < 100) pctEl.style.color = 'var(--red-br)';
+    else pctEl.style.color = '#e74c3c';
+  }
+
+  // Macros (new 3-column grid: prot, gluc, lip with current/target)
+  setText('m-prot-val', Math.round(totals.prot));
+  setText('m-prot-tg', c.prot || 0);
+  setText('m-gluc-val', Math.round(totals.gluc));
+  setText('m-gluc-tg', c.gluc || 0);
+  setText('m-lip-val', Math.round(totals.lip));
+  setText('m-lip-tg', c.lip || 0);
 
   // Meals list — NEW: inline expandable cards with foods inside
   const mealsEl = document.getElementById('nut-meals');
@@ -3727,6 +3887,40 @@ function closeTplMenu(){
   document.getElementById('tpl-menu-modal').classList.remove('active');
 }
 
+/* Open the global templates menu (from the 'Templates' button at top of nutrition) */
+function openAllTemplatesMenu(){
+  const tpls = getMealTemplates();
+  document.getElementById('tpl-menu-title').textContent = 'Mes templates de repas';
+  document.getElementById('tpl-menu-sub').textContent = tpls.length === 0
+    ? 'Aucun template enregistré. Ouvre un repas et tape "Template" pour en créer un.'
+    : `${tpls.length} template${tpls.length > 1 ? 's' : ''} enregistré${tpls.length > 1 ? 's' : ''}`;
+
+  let body = '';
+  if(tpls.length > 0){
+    const groups = { matin: [], midi: [], gouter: [], soir: [], autre: [] };
+    tpls.forEach(t => { (groups[t.mealType] || groups.autre).push(t); });
+    body = '<div style="max-height:320px;overflow-y:auto;margin:10px 0;">';
+    ['matin','midi','gouter','soir','autre'].forEach(key => {
+      if(groups[key].length === 0) return;
+      body += `<div style="font-size:10px;color:var(--txt3);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin:10px 0 6px;">${MEAL_TYPE_LABELS[key]}</div>`;
+      groups[key].forEach(t => {
+        const totalKcal = (t.foods || []).reduce((s, f) => s + computeFoodMacros(f.aid, f.g).kcal, 0);
+        body += `<div style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--brd);border-radius:8px;margin-bottom:6px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:700;">${escapeHtml(t.name)}</div>
+            <div style="font-size:10px;color:var(--txt3);margin-top:2px;">${(t.foods||[]).length} aliments · ${Math.round(totalKcal)} kcal</div>
+          </div>
+          <button class="btn btn-sm" onclick="deleteMealTemplate('${t.id}')" style="padding:6px 10px;font-size:11px;color:var(--txt3);" aria-label="Supprimer">✕</button>
+        </div>`;
+      });
+    });
+    body += '</div>';
+    body += `<div style="font-size:10px;color:var(--txt3);margin-top:8px;text-align:center;">Pour appliquer un template à un repas, ouvre ce repas et tape "Template".</div>`;
+  }
+  document.getElementById('tpl-menu-body').innerHTML = body;
+  document.getElementById('tpl-menu-modal').classList.add('active');
+}
+
 function saveMealAsTemplate(mealId){
   const meals = loadDayMeals(selectedNutritionDate);
   const meal = meals.find(m => m.id === mealId);
@@ -3810,31 +4004,117 @@ function closeFoodPicker(){
   document.getElementById('food-picker-modal').classList.remove('active');
 }
 function onFoodSearch(){
-  renderFoodList(document.getElementById('food-search').value.trim().toLowerCase());
+  renderFoodList(document.getElementById('food-search').value.trim());
 }
+
+/* Normalize a string for fuzzy matching:
+   - lowercase
+   - strip accents (é → e, à → a, etc.)
+   - normalize apostrophes and spaces */
+function _normStr(s){
+  return String(s == null ? '' : s)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')  // strip combining diacritics
+    .replace(/[''`]/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/* Levenshtein distance — number of edits (insertions, deletions, substitutions) to go from a to b */
+function _levenshtein(a, b){
+  if(a === b) return 0;
+  if(!a.length) return b.length;
+  if(!b.length) return a.length;
+  const prev = Array(b.length + 1);
+  for(let i = 0; i <= b.length; i++) prev[i] = i;
+  for(let i = 1; i <= a.length; i++){
+    let cur = [i];
+    for(let j = 1; j <= b.length; j++){
+      const cost = a.charCodeAt(i-1) === b.charCodeAt(j-1) ? 0 : 1;
+      cur[j] = Math.min(
+        cur[j-1] + 1,       // insertion
+        prev[j] + 1,        // deletion
+        prev[j-1] + cost    // substitution
+      );
+    }
+    for(let k = 0; k <= b.length; k++) prev[k] = cur[k];
+  }
+  return prev[b.length];
+}
+
+/* Score how well an aliment matches the query.
+   Higher score = better match. Returns 0 if it's not a reasonable match at all. */
+function _fuzzyScore(query, name){
+  const q = _normStr(query);
+  const n = _normStr(name);
+  if(!q) return 1;
+  if(n === q) return 1000;
+  if(n.startsWith(q)) return 500;
+  if(n.includes(q)) return 300;
+  // Check if any word in the name starts with the query (helps for multi-word names)
+  const words = n.split(/[\s\-']/);
+  for(const w of words){
+    if(w.startsWith(q)) return 250;
+    if(w.includes(q)) return 150;
+  }
+  // Fuzzy match: tolerate typos (Levenshtein distance proportional to query length)
+  // For a query of 3 chars, accept 1 typo; for 5+, accept up to 2 typos
+  const maxDist = q.length <= 3 ? 1 : (q.length <= 6 ? 2 : 3);
+  // Sliding window over the name to find best subword match
+  let bestDist = Infinity;
+  if(q.length <= n.length){
+    for(let i = 0; i + q.length <= n.length + maxDist; i++){
+      const slice = n.substr(i, q.length);
+      const d = _levenshtein(q, slice);
+      if(d < bestDist) bestDist = d;
+      if(bestDist === 0) break;
+    }
+  }
+  // Also try the full distance to each word
+  for(const w of words){
+    const d = _levenshtein(q, w);
+    if(d < bestDist) bestDist = d;
+  }
+  if(bestDist <= maxDist) return 100 - bestDist * 20;
+  return 0;
+}
+
 function renderFoodList(query){
   const listEl = document.getElementById('food-list');
   const freq = getFoodFrequencies();
-  let pool = query
-    ? ALIMENTS_DB.filter(a => a.nom.toLowerCase().includes(query))
-    : ALIMENTS_DB.slice();
-  // Sort: most used first, then alphabetical
-  pool.sort((a, b) => {
-    const fa = freq[a.id] || 0, fb = freq[b.id] || 0;
-    if(fa !== fb) return fb - fa;
-    return a.nom.localeCompare(b.nom);
-  });
+  let pool;
+  if(!query){
+    // No search: show all, sorted by frequency then alpha
+    pool = ALIMENTS_DB.slice().map(a => ({ a, score: 0 }));
+    pool.sort((x, y) => {
+      const fa = freq[x.a.id] || 0, fb = freq[y.a.id] || 0;
+      if(fa !== fb) return fb - fa;
+      return x.a.nom.localeCompare(y.a.nom, 'fr');
+    });
+  } else {
+    // Search: fuzzy match, rank by score then by usage frequency
+    pool = ALIMENTS_DB
+      .map(a => ({ a, score: _fuzzyScore(query, a.nom) }))
+      .filter(x => x.score > 0);
+    pool.sort((x, y) => {
+      if(x.score !== y.score) return y.score - x.score;
+      const fa = freq[x.a.id] || 0, fb = freq[y.a.id] || 0;
+      if(fa !== fb) return fb - fa;
+      return x.a.nom.localeCompare(y.a.nom, 'fr');
+    });
+  }
   if(pool.length === 0){
-    listEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px;">Aucun aliment trouvé</div>`;
+    listEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px;">Aucun aliment trouvé pour "${escapeHtml(query)}"</div>`;
     return;
   }
-  listEl.innerHTML = pool.map(a => {
+  listEl.innerHTML = pool.map(({ a }) => {
     const usageCount = freq[a.id] || 0;
     const fav = usageCount > 0 ? '<span style="color:var(--red-br);margin-left:6px;font-size:10px;" title="Utilisé ' + usageCount + 'x">★</span>' : '';
     return `<button class="food-item" onclick="pickFood('${a.id}')">
       <span style="font-size:22px;">${a.emoji}</span>
       <div style="flex:1;text-align:left;min-width:0;">
-        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.nom}${fav}</div>
+        <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(a.nom)}${fav}</div>
         <div style="font-size:10px;color:var(--txt3);margin-top:2px;">${a.kcal} kcal · P ${a.prot} · G ${a.gluc} · L ${a.lip} / 100g</div>
       </div>
     </button>`;
