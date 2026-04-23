@@ -1469,7 +1469,6 @@ textarea.fi{resize:vertical;}
     </div>
   </div>
 </div>
-</div>
 
 <div class="toast" id="toast"><div class="td"></div><span id="toast-msg"></span></div>
 
@@ -1814,9 +1813,67 @@ window.persistExercises = function(){
         list: window.S.exercises || [],
         _ts: firebase.firestore.FieldValue.serverTimestamp()
       });
+      // Propagate any exercise changes (nom, muscle, equip, img, img2) to all clients' events
+      try { await propagateAllExercisesToClients(); } catch(e){ console.warn('propagate err', e); }
     } catch(e){ console.warn('persistExercises err', e); }
   }, 600);
 };
+
+/* For each client, walk their calendar events and update seanceSnapshot.exercises
+   fields (nom/muscle/equip/img/img2) from the library. Writes back to Firestore
+   only for events that actually changed. This makes photo updates in the coach
+   library propagate live to all students who have that exercise in a session. */
+async function propagateAllExercisesToClients(){
+  if(typeof db === 'undefined') return;
+  if(!window.S || !Array.isArray(window.S.clients)) return;
+  const lib = window.S.exercises || [];
+  const libById = new Map(lib.map(e => [String(e.id), e]));
+  const writes = [];
+  for(const c of window.S.clients){
+    const cid = String(c.id);
+    if(c._fake || c._local) continue; // skip demo/local clients
+    const events = (window.S.clientEvents && window.S.clientEvents[cid]) || [];
+    for(const ev of events){
+      if(!ev || !ev.seanceSnapshot || !Array.isArray(ev.seanceSnapshot.exercises)) continue;
+      let changed = false;
+      ev.seanceSnapshot.exercises = ev.seanceSnapshot.exercises.map((ex, idx) => {
+        const libEx = libById.get(String(ex.id));
+        if(!libEx) return ex;
+        // Keep per-seance settings (sets, reps, poids_cible, setsData, results…) intact,
+        // but refresh the exercise identity fields from the library
+        const next = {
+          ...ex,
+          nom: libEx.nom || ex.nom || ('Exercice ' + (idx + 1)),
+          muscle: libEx.muscle || ex.muscle || '',
+          equip: libEx.equip || ex.equip || '',
+          equipment: libEx.equip || ex.equipment || ex.equip || '',
+          img: libEx.img || '',
+          img2: libEx.img2 || ''
+        };
+        // Detect any change to decide whether to write
+        if(next.nom !== ex.nom || next.muscle !== ex.muscle || next.equip !== ex.equip
+           || next.img !== (ex.img || '') || next.img2 !== (ex.img2 || '')){
+          changed = true;
+        }
+        return next;
+      });
+      if(changed){
+        writes.push(
+          db.collection('clients').doc(cid).collection('events').doc(ev.id)
+            .set(ev, {merge: true})
+            .catch(e => console.warn('propagate write err', cid, ev.id, e))
+        );
+      }
+    }
+  }
+  if(writes.length){
+    try { await Promise.all(writes); } catch(e){}
+    console.log(`Propagated exercise changes to ${writes.length} event(s)`);
+  }
+}
+
+// Expose for manual trigger (e.g. from debug console or future UI)
+window.propagateAllExercisesToClients = propagateAllExercisesToClients;
 
 window.fbSaveNutPlans = async function(){
   try {
